@@ -53,6 +53,39 @@ Load it in Chrome:
 | `pnpm package` | Build and pack `dist/` into `release/ai-chat-navigator-<version>.zip` for the Chrome Web Store. |
 | `pnpm icons` | Regenerate the PNG icons in `public/icons/` from `assets/brand/logo-source.png` (uses `sharp`). |
 
+### Releasing (ZIP for the Chrome Web Store)
+
+Requires the pinned toolchain: Node 26.13 (`nvm use` reads `.nvmrc`) and pnpm 11. `pnpm -v` must print `11.x`. An older global pnpm (for example from Homebrew) earlier in `PATH` fails with `packages field missing or empty`.
+
+1. **Bump the version** in both `manifest.json` and `package.json` (keep them equal). The Chrome Web Store rejects an upload whose `version` is not higher than the published one.
+2. **Check:**
+   ```bash
+   pnpm install --frozen-lockfile
+   pnpm test
+   pnpm test:e2e        # optional, needs Chromium (see Testing)
+   ```
+3. **Build the ZIP:**
+   ```bash
+   pnpm package
+   # [cmn] release/ai-chat-navigator-1.0.1.zip (10 files, 49 KB)
+   ```
+   This type-checks, builds `dist/` from scratch, checks the manifest against the store limits, and zips `dist/` with `manifest.json` at the archive root. It stops with an error if `name` is over 75 characters or `description` is over 132, and warns if `short_name` is over 12.
+4. **Inspect the archive** (optional):
+   ```bash
+   unzip -l release/ai-chat-navigator-<version>.zip
+   shasum -a 256 release/ai-chat-navigator-<version>.zip
+   ```
+   The ZIP is reproducible: file timestamps are fixed, so the same sources always produce the same bytes and checksum.
+5. **Commit and tag:**
+   ```bash
+   git commit -am "Release <version>: …"
+   git tag -a v<version> -m "AI Chat Navigator <version> — …"
+   git push origin main --follow-tags
+   ```
+6. **Upload:** in the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole), open the item, go to **Package → Upload new package**, choose the ZIP, then **Submit for review**.
+
+`dist/` and `release/` are git-ignored. Rebuild the ZIP from the tagged commit instead of keeping archives around.
+
 ---
 
 ## Using the navigator
