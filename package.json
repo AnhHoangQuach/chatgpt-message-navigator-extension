@@ -33,7 +33,7 @@
     "tailwindcss": "^4.3.4",
     "typescript": "~5.9.3",
     "vite": "^6.4.5",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.12"
   },
   "engines": {
     "node": ">=26.13.0"

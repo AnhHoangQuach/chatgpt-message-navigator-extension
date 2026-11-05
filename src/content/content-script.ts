@@ -10,10 +10,31 @@ import { NavigatorController, type PanelChannel } from './navigator-controller';
  */
 
 const TAKEOVER_EVENT = 'cmn:content-script-takeover';
+/**
+ * Teardown of the running copy, kept in the content-script isolated world:
+ * page scripts can't see or call it.
+ */
+const INSTANCE_KEY = '__chatNavigatorTeardown';
+
+type IsolatedGlobal = typeof globalThis & { [INSTANCE_KEY]?: () => void };
+
+function extensionContextAlive(): boolean {
+  try {
+    return Boolean(chrome.runtime?.id);
+  } catch {
+    return false;
+  }
+}
 
 function main(): void {
-  // If an older copy of this script is still alive (extension reloaded or the
-  // panel re-injected us), tell it to shut down before we start.
+  const isolated = globalThis as IsolatedGlobal;
+
+  // An older copy in this same isolated world (the panel re-injected us):
+  // shut it down directly.
+  isolated[INSTANCE_KEY]?.();
+  // A copy orphaned by an extension reload may live in another world; it
+  // reacts to this DOM event only if its own extension context is gone (see
+  // onTakeover), so the page dispatching the same event can't stop us.
   document.dispatchEvent(new CustomEvent(TAKEOVER_EVENT));
 
   const controller = new NavigatorController();
@@ -21,8 +42,8 @@ function main(): void {
 
   const onConnect = (port: chrome.runtime.Port) => {
     if (port.name !== PORT_NAME) return;
-    // Only accept connections from our own extension pages.
-    if (port.sender?.id !== undefined && port.sender.id !== chrome.runtime.id) {
+    // Only accept connections from this extension's own pages.
+    if (port.sender?.id !== chrome.runtime.id) {
       port.disconnect();
       return;
     }
@@ -58,17 +79,25 @@ function main(): void {
     } catch {
       /* extension context invalidated */
     }
-    document.removeEventListener(TAKEOVER_EVENT, teardown);
+    document.removeEventListener(TAKEOVER_EVENT, onTakeover);
     clearInterval(contextCheck);
+    if (isolated[INSTANCE_KEY] === teardown) delete isolated[INSTANCE_KEY];
+  };
+
+  // Untrusted (any script on the page can dispatch it): only an orphaned copy
+  // whose extension context is gone shuts down.
+  const onTakeover = () => {
+    if (!extensionContextAlive()) teardown();
   };
 
   // Registered after dispatching, so we never receive our own takeover event.
-  document.addEventListener(TAKEOVER_EVENT, teardown);
+  document.addEventListener(TAKEOVER_EVENT, onTakeover);
   chrome.runtime.onConnect.addListener(onConnect);
+  isolated[INSTANCE_KEY] = teardown;
 
   // When the extension is reloaded/removed this copy becomes orphaned.
   const contextCheck = setInterval(() => {
-    if (!chrome.runtime?.id) teardown();
+    if (!extensionContextAlive()) teardown();
   }, 5000);
 }
 

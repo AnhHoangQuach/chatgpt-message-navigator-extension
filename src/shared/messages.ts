@@ -51,15 +51,29 @@ export function isContentToPanel(value: unknown): value is ContentToPanel {
   return typeof value === 'object' && value !== null && typeof (value as { type?: unknown }).type === 'string';
 }
 
+/** Longest message ID accepted from the panel (real IDs are UUID-sized). */
+const MAX_ID_LENGTH = 512;
+
+/** Validates every field, not just `type` (defence in depth: only our panel can connect). */
 export function isPanelToContent(value: unknown): value is PanelToContent {
   if (typeof value !== 'object' || value === null) return false;
-  const type = (value as { type?: unknown }).type;
-  return (
-    type === 'REQUEST_SNAPSHOT' ||
-    type === 'RESCAN' ||
-    type === 'SCROLL_TO' ||
-    type === 'SCROLL_TO_BOTTOM' ||
-    type === 'INDEX_MORE' ||
-    type === 'CANCEL_INDEX_MORE'
-  );
+  const v = value as { type?: unknown; messageId?: unknown; requestId?: unknown };
+  switch (v.type) {
+    case 'REQUEST_SNAPSHOT':
+    case 'RESCAN':
+    case 'SCROLL_TO_BOTTOM':
+    case 'INDEX_MORE':
+    case 'CANCEL_INDEX_MORE':
+      return true;
+    case 'SCROLL_TO':
+      return (
+        typeof v.messageId === 'string' &&
+        v.messageId.length > 0 &&
+        v.messageId.length <= MAX_ID_LENGTH &&
+        typeof v.requestId === 'number' &&
+        Number.isSafeInteger(v.requestId)
+      );
+    default:
+      return false;
+  }
 }
