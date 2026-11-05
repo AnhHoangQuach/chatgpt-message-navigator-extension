@@ -25,9 +25,9 @@ export function HeaderTools({ onRescan, onIndexMore, onCancelIndexMore, indexMor
           type="button"
           className={cn(toolBtn, 'border-accent text-accent-strong')}
           onClick={onCancelIndexMore}
-          aria-label="Dừng quét"
+          aria-label="Stop indexing"
           aria-busy="true"
-          title="Đang quét toàn bộ… Bấm để dừng (Esc)"
+          title="Indexing the whole conversation… Click to stop (Esc)"
         >
           <LoaderCircle size={17} className="animate-spin motion-reduce:animate-[spin_2.4s_linear_infinite]" />
         </button>
@@ -37,8 +37,8 @@ export function HeaderTools({ onRescan, onIndexMore, onCancelIndexMore, indexMor
           className={toolBtn}
           onClick={onIndexMore}
           disabled={disabled}
-          aria-label="Quét toàn bộ"
-          title="Quét toàn bộ cuộc trò chuyện: cuộn dần lên đầu để tìm các tin nhắn ChatGPT chưa hiển thị, rồi quay lại chỗ cũ"
+          aria-label="Index more"
+          title="Index the whole conversation: scroll up step by step to find messages ChatGPT has not rendered, then return to where you were"
         >
           <Layers size={17} />
         </button>
@@ -48,9 +48,9 @@ export function HeaderTools({ onRescan, onIndexMore, onCancelIndexMore, indexMor
         className={toolBtn}
         onClick={onRescan}
         disabled={disabled || running || rescanning}
-        aria-label="Quét lại"
+        aria-label="Rescan"
         aria-busy={rescanning}
-        title={rescanning ? 'Đang quét lại…' : 'Quét lại cuộc trò chuyện'}
+        title={rescanning ? 'Rescanning…' : 'Rescan the conversation'}
       >
         <RefreshCw size={16} className={rescanning ? 'animate-spin motion-reduce:animate-[spin_2.4s_linear_infinite]' : ''} />
       </button>
@@ -107,10 +107,10 @@ function NavItem({
 /** Bottom navigation: previous / next message, jump to the latest, indexing details. */
 export function NavigatorToolbar({ onPrev, onNext, onBottom, onToggleDetails, disabled, detailsOpen, detailsDisabled, hasWarnings }: BottomNavProps) {
   return (
-    <nav aria-label="Điều hướng" className="flex items-stretch gap-1 border-t border-line bg-bg px-3 pt-1.5 pb-2">
-      <NavItem icon={<ChevronUp size={20} />} label="Trước" title="Tin nhắn trước trong danh sách (Alt+↑)" onClick={onPrev} disabled={disabled} />
-      <NavItem icon={<ChevronDown size={20} />} label="Sau" title="Tin nhắn sau trong danh sách (Alt+↓)" onClick={onNext} disabled={disabled} />
-      <NavItem icon={<ArrowDownToLine size={19} />} label="Cuối trang" title="Cuộn ChatGPT tới tin nhắn mới nhất" onClick={onBottom} disabled={disabled} />
+    <nav aria-label="Navigation" className="flex items-stretch gap-1 border-t border-line bg-bg px-3 pt-1.5 pb-2">
+      <NavItem icon={<ChevronUp size={20} />} label="Prev" title="Previous message in the list (Alt+↑)" onClick={onPrev} disabled={disabled} />
+      <NavItem icon={<ChevronDown size={20} />} label="Next" title="Next message in the list (Alt+↓)" onClick={onNext} disabled={disabled} />
+      <NavItem icon={<ArrowDownToLine size={19} />} label="Bottom" title="Scroll ChatGPT to the latest message" onClick={onBottom} disabled={disabled} />
       <NavItem
         icon={
           <span className="relative">
@@ -118,8 +118,8 @@ export function NavigatorToolbar({ onPrev, onNext, onBottom, onToggleDetails, di
             {hasWarnings && <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-warn ring-2 ring-bg" aria-hidden="true" />}
           </span>
         }
-        label="Chi tiết"
-        title={hasWarnings ? 'Chi tiết lập chỉ mục (có cảnh báo)' : 'Chi tiết lập chỉ mục'}
+        label="Details"
+        title={hasWarnings ? 'Indexing details (warnings)' : 'Indexing details'}
         onClick={onToggleDetails}
         disabled={detailsDisabled}
         active={detailsOpen}

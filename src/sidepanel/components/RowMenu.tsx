@@ -26,10 +26,10 @@ export function RowMenu({ menu, bookmarked, canBookmark, onClose, onJump, onCopy
   const [pos, setPos] = useState({ top: menu.anchor.bottom + 4, left: menu.anchor.right - WIDTH });
 
   const items = [
-    { label: 'Đi tới tin nhắn', icon: <CornerDownRight size={14} />, run: () => onJump(menu.row), disabled: false },
-    { label: 'Sao chép nội dung', icon: <Copy size={14} />, run: () => onCopy(menu.row), disabled: false },
+    { label: 'Go to message', icon: <CornerDownRight size={14} />, run: () => onJump(menu.row), disabled: false },
+    { label: 'Copy text', icon: <Copy size={14} />, run: () => onCopy(menu.row), disabled: false },
     {
-      label: bookmarked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích',
+      label: bookmarked ? 'Remove from favorites' : 'Add to favorites',
       icon: <Star size={14} fill={bookmarked ? 'var(--color-accent)' : 'none'} />,
       run: () => onToggleBookmark(menu.row),
       disabled: !canBookmark,
@@ -80,7 +80,7 @@ export function RowMenu({ menu, bookmarked, canBookmark, onClose, onJump, onCopy
     <div
       ref={ref}
       role="menu"
-      aria-label="Thao tác với tin nhắn"
+      aria-label="Message actions"
       className="fixed z-50 rounded-xl border border-line bg-bg p-1 shadow-lg"
       style={{ top: pos.top, left: pos.left, width: WIDTH }}
       onKeyDown={onKeyDown}

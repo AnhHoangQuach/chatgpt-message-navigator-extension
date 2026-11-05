@@ -26,8 +26,8 @@ interface Props {
   onMenu(row: ListRow, anchor: DOMRect): void;
 }
 
-export const ROLE_NAME = { user: 'Bạn', assistant: 'ChatGPT' } as const;
-const ROLE_FALLBACK = { user: 'Câu hỏi của bạn', assistant: 'Câu trả lời của ChatGPT' } as const;
+export const ROLE_NAME = { user: 'You', assistant: 'ChatGPT' } as const;
+const ROLE_FALLBACK = { user: 'Your prompt', assistant: 'ChatGPT response' } as const;
 
 /** Card title: the first sentence (or ~90 characters) of the message; the rest becomes the preview. */
 export function splitTitle(text: string): { title: string; rest: string } {
@@ -91,8 +91,8 @@ function MessageItemImpl({
 
   const label =
     row.kind === 'message'
-      ? `Tin nhắn ${row.message.index + 1}, ${role === 'user' ? 'của bạn' : 'của ChatGPT'}${row.message.mounted ? '' : ', hiện không hiển thị trên trang'}`
-      : 'Tin nhắn yêu thích, không còn trên trang';
+      ? `Message ${row.message.index + 1}, ${role === 'user' ? 'you' : 'ChatGPT'}${row.message.mounted ? '' : ', not currently rendered'}`
+      : 'Favorite message, no longer on the page';
 
   return (
     // Fixed height (ROW_HEIGHT): a 64px card plus an 8px gap.
@@ -135,7 +135,7 @@ function MessageItemImpl({
 
         <div data-testid="row-text" className="min-w-0 flex-1">
           <p data-testid="row-title" className={cn('truncate text-[13px] leading-5 font-semibold', dim ? 'text-muted' : 'text-fg')}>
-            {text.title ? <Highlighted text={text.title} ranges={text.titleRanges} /> : <span className="italic">(không có nội dung chữ)</span>}
+            {text.title ? <Highlighted text={text.title} ranges={text.titleRanges} /> : <span className="italic">(no text content)</span>}
           </p>
           <p className="truncate text-xs leading-[18px] text-muted">
             {text.preview ? <Highlighted text={text.preview} ranges={text.previewRanges} /> : ROLE_FALLBACK[role]}
@@ -148,26 +148,26 @@ function MessageItemImpl({
           </span>
           <span className="flex h-3 items-center gap-1">
             {pending && (
-              <span data-testid="row-pending" className="inline-flex text-accent-strong" title="Đang tới tin nhắn…">
+              <span data-testid="row-pending" className="inline-flex text-accent-strong" title="Jumping to this message…">
                 <LoaderCircle size={12} className="animate-spin motion-reduce:animate-[spin_2.4s_linear_infinite]" />
-                <span className="sr-only">đang tới tin nhắn</span>
+                <span className="sr-only">jumping to message</span>
               </span>
             )}
             {message?.streaming && (
-              <span data-testid="badge-live" className="relative flex size-2" title="ChatGPT đang viết câu trả lời này">
+              <span data-testid="badge-live" className="relative flex size-2" title="ChatGPT is still writing this response">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75 motion-reduce:animate-none" />
                 <span className="relative inline-flex size-2 rounded-full bg-accent" />
-                <span className="sr-only">đang viết</span>
+                <span className="sr-only">writing</span>
               </span>
             )}
             {unmounted && (
-              <span className={meta} title="Đã thấy trước đó nhưng hiện không hiển thị trên trang; bấm để kéo lại">
+              <span className={meta} title="Seen earlier but not currently rendered on the page; click to bring it back">
                 <EyeOff size={11} />
               </span>
             )}
             {missing && (
-              <span className="text-[10px] font-medium text-warn" title="Tin nhắn này không còn trên trang">
-                không còn
+              <span className="text-[10px] font-medium text-warn" title="This message is no longer on the page">
+                gone
               </span>
             )}
           </span>
@@ -177,9 +177,9 @@ function MessageItemImpl({
           type="button"
           tabIndex={-1}
           className={cn('icon-btn size-6.5 shrink-0', bookmarked && 'text-accent-strong')}
-          aria-label={bookmarked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+          aria-label={bookmarked ? 'Remove from favorites' : 'Add to favorites'}
           aria-pressed={bookmarked}
-          title={canBookmark ? (bookmarked ? 'Bỏ yêu thích (B)' : 'Thêm vào yêu thích (B)') : 'Cần lưu cuộc trò chuyện trước khi thêm yêu thích'}
+          title={canBookmark ? (bookmarked ? 'Remove from favorites (B)' : 'Add to favorites (B)') : 'Favorites need a saved conversation'}
           disabled={!canBookmark}
           onClick={(e) => {
             e.stopPropagation();
@@ -192,9 +192,9 @@ function MessageItemImpl({
           type="button"
           tabIndex={-1}
           className="icon-btn size-6.5 shrink-0"
-          aria-label="Thêm thao tác"
+          aria-label="More actions"
           aria-haspopup="menu"
-          title="Thêm thao tác"
+          title="More actions"
           onClick={(e) => {
             e.stopPropagation();
             onMenu(row, e.currentTarget.getBoundingClientRect());

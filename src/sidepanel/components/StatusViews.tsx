@@ -24,7 +24,7 @@ export function Banner({ banner, onDismiss }: { banner: BannerData; onDismiss():
     >
       <Info size={15} className={cn('mt-px shrink-0', tone.icon)} />
       <span className="flex-1">{banner.text}</span>
-      <button type="button" className="icon-btn size-6" onClick={onDismiss} aria-label="Đóng" title="Đóng (Esc)">
+      <button type="button" className="icon-btn size-6" onClick={onDismiss} aria-label="Dismiss" title="Dismiss (Esc)">
         <X size={13} />
       </button>
     </div>
@@ -64,24 +64,24 @@ export function EmptyState({ title, body, action, spinner }: EmptyProps) {
 }
 
 const STRATEGY_LABEL: Record<Diagnostics['strategy'], string> = {
-  'author-role': 'author-role (giao diện cũ)',
-  'conversation-turn': 'conversation-turn (dự phòng)',
-  'turn-key': 'turn-key (giao diện 11/2026)',
-  none: 'không tìm thấy tin nhắn',
+  'author-role': 'author-role (classic markup)',
+  'conversation-turn': 'conversation-turn (fallback)',
+  'turn-key': 'turn-key (Nov 2026 markup)',
+  none: 'no messages found',
 };
 
 export function DiagnosticsPanel({ diagnostics, onRescan, rescanning }: { diagnostics: Diagnostics; onRescan(): void; rescanning: boolean }) {
-  const time = diagnostics.lastScanAt ? new Date(diagnostics.lastScanAt).toLocaleTimeString('vi-VN') : '—';
+  const time = diagnostics.lastScanAt ? new Date(diagnostics.lastScanAt).toLocaleTimeString() : '—';
   return (
     <div className="mx-4 mt-3 rounded-xl border border-line bg-surface px-3 pt-2.5 pb-3 text-[12px]">
       <dl className="mb-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 [&_dt]:text-muted">
-        <dt>Cách nhận diện</dt>
+        <dt>Detection</dt>
         <dd>{STRATEGY_LABEL[diagnostics.strategy]}</dd>
-        <dt>Đang hiển thị</dt>
-        <dd>{diagnostics.mountedCount} tin nhắn</dd>
-        <dt>Vùng cuộn</dt>
-        <dd>{diagnostics.scrollContainerFound ? 'đã tìm thấy' : 'không tìm thấy'}</dd>
-        <dt>Lần quét cuối</dt>
+        <dt>Rendered now</dt>
+        <dd>{diagnostics.mountedCount} messages</dd>
+        <dt>Scroll area</dt>
+        <dd>{diagnostics.scrollContainerFound ? 'detected' : 'not detected'}</dd>
+        <dt>Last scan</dt>
         <dd>
           {time} ({diagnostics.scanDurationMs} ms)
         </dd>
@@ -94,13 +94,13 @@ export function DiagnosticsPanel({ diagnostics, onRescan, rescanning }: { diagno
         </ul>
       )}
       <p className="mt-1.5 mb-2.5 text-muted">
-        Danh sách chỉ gồm các tin nhắn ChatGPT đã hiển thị trong tab này. Tin có biểu tượng mắt gạch là tin đã thấy trước
-        đó nhưng ChatGPT tạm gỡ khỏi trang; bấm vào để kéo lại. Cuộn lên hoặc bấm <strong>Quét toàn bộ</strong> để thêm
-        các tin cũ hơn.
+        The list contains only messages ChatGPT has rendered in this tab. Messages with the eye-off icon were seen
+        earlier but ChatGPT has unmounted them; click one to bring it back. Scroll up, or use <strong>Index more</strong>,
+        to add older messages.
       </p>
       <button type="button" className="btn btn-sm" onClick={onRescan} disabled={rescanning} aria-busy={rescanning || undefined}>
         {rescanning && <LoaderCircle size={13} className="animate-spin" />}
-        {rescanning ? 'Đang quét lại…' : 'Quét lại ngay'}
+        {rescanning ? 'Rescanning…' : 'Rescan now'}
       </button>
     </div>
   );

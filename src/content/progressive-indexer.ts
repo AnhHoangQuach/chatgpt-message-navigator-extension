@@ -56,10 +56,10 @@ export class ProgressiveIndexer {
   }
 
   async run(): Promise<ProgressiveIndexState> {
-    if (this.running) return this.state(0, 0, false, 'Đang quét…');
+    if (this.running) return this.state(0, 0, false, 'Already indexing…');
     const container = this.hooks.getContainer();
     if (!container) {
-      const s = this.state(0, 0, false, 'Không tìm thấy vùng cuộn của cuộc trò chuyện nên không quét được.');
+      const s = this.state(0, 0, false, 'Could not find the conversation scroll area. Nothing to index.');
       this.hooks.onState(s);
       return s;
     }
@@ -82,7 +82,7 @@ export class ProgressiveIndexer {
     const settle = () => (this.hooks.settle ? this.hooks.settle() : this.hooks.wait(STEP_SETTLE_MS));
     const progress = (count: number) => {
       this.hooks.onState(
-        this.state(step, count - startCount, reachedTop, `Đang quét cuộc trò chuyện… ${count} tin nhắn`, true),
+        this.state(step, count - startCount, reachedTop, `Indexing the conversation… ${count} message${count === 1 ? '' : 's'}`, true),
       );
     };
 
@@ -129,14 +129,15 @@ export class ProgressiveIndexer {
       // content loaded above does not shift what the user was looking at).
       if (!this.cancelled || this.restoreOnCancel) container.scrollTop = container.scrollHeight - distanceFromBottom;
       const discovered = this.hooks.scanNow() - startCount;
-      const found = `tìm thêm ${Math.max(0, discovered)} tin nhắn`;
+      const n = Math.max(0, discovered);
+      const found = `${n} new message${n === 1 ? '' : 's'} found`;
       const message = this.cancelled
-        ? `Đã dừng, ${found}.`
+        ? `Stopped. ${found}.`
         : reachedTop && reachedBottom
-          ? discovered > 0
-            ? `Xong. Đã quét toàn bộ cuộc trò chuyện (thêm ${discovered} tin nhắn).`
-            : 'Xong. Toàn bộ cuộc trò chuyện đã có trong danh sách.'
-          : `Đã dừng sau ${step} bước, ${found}.`;
+          ? n > 0
+            ? `Done. Indexed the whole conversation (${n} more message${n === 1 ? '' : 's'}).`
+            : 'Done. The whole conversation is indexed.'
+          : `Stopped after ${step} steps. ${found}.`;
       final = this.state(step, discovered, reachedTop, message);
       this.running = false;
       this.cancelled = false;

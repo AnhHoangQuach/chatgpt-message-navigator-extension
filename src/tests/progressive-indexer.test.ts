@@ -54,7 +54,7 @@ describe('ProgressiveIndexer', () => {
     });
     const final = await indexer.run();
     expect(steps).toBe(3);
-    expect(final.message).toMatch(/^Đã dừng/);
+    expect(final.message).toMatch(/^Stopped/);
     expect(el.scrollTop).toBe(99_000);
   });
 
@@ -65,6 +65,6 @@ describe('ProgressiveIndexer', () => {
       onState: () => undefined,
       wait: async () => undefined,
     });
-    expect((await indexer.run()).message).toMatch(/Không tìm thấy vùng cuộn/);
+    expect((await indexer.run()).message).toMatch(/Could not find/);
   });
 });

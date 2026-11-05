@@ -247,6 +247,6 @@ describe('NavigatorController', () => {
     controller.connect(panel);
     const d = panel.last('SNAPSHOT')!.snapshot.diagnostics;
     expect(d.strategy).toBe('none');
-    expect(d.warnings.join(' ')).toMatch(/Không tìm thấy tin nhắn/);
+    expect(d.warnings.join(' ')).toMatch(/No messages found/);
   });
 });

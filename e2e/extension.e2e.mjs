@@ -125,7 +125,7 @@ const firstRow = await panel.$eval('[role=option]', (el) => ({
   role: el.querySelector('[data-testid=role]')?.textContent,
   title: el.querySelector('[data-testid=row-title]')?.textContent,
 }));
-check('first row is #1 user message', firstRow.num === '#1' && firstRow.role === 'Bạn' && firstRow.title === 'Question 1: explain RabbitMQ prefetch?', JSON.stringify(firstRow));
+check('first row is #1 user message', firstRow.num === '#1' && firstRow.role === 'You' && firstRow.title === 'Question 1: explain RabbitMQ prefetch?', JSON.stringify(firstRow));
 await panel.screenshot({ path: join(OUT, 'panel-light.png') });
 
 // Search (accent-insensitive Vietnamese)
@@ -140,16 +140,16 @@ await panel.waitForTimeout(250);
 check('Escape clears search', (await panel.inputValue('input[type=search]')) === '');
 
 // Filters
-await panel.click('button[role=radio]:has-text("Của tôi")');
+await panel.click('button[role=radio]:has-text("Mine")');
 await panel.waitForTimeout(100);
 const mineRoles = await panel.$$eval('[role=option] [data-testid=role]', (els) => [...new Set(els.map((e) => e.textContent))]);
-check('"Của tôi" filter shows only user messages', mineRoles.length === 1 && mineRoles[0] === 'Bạn', JSON.stringify(mineRoles));
+check('"Mine" filter shows only user messages', mineRoles.length === 1 && mineRoles[0] === 'You', JSON.stringify(mineRoles));
 await panel.click('button[role=radio]:has-text("ChatGPT")');
 await panel.waitForTimeout(100);
 const gptRoles = await panel.$$eval('[role=option] [data-testid=role]', (els) => [...new Set(els.map((e) => e.textContent))]);
 check('"ChatGPT" filter shows only responses', gptRoles.length === 1 && gptRoles[0] === 'ChatGPT', JSON.stringify(gptRoles));
 check('no Code / Tables filter chips', (await panel.$$('button[aria-pressed]:has-text("Code"), button[aria-pressed]:has-text("Tables")')).length === 0);
-await panel.click('button[role=radio]:has-text("Tất cả")');
+await panel.click('button[role=radio]:has-text("All")');
 
 // Jump to message
 const scrollBefore = await page.evaluate(() => document.getElementById('scroll').scrollTop);
@@ -231,18 +231,18 @@ await panel.waitForTimeout(300);
 
 // Bookmarks
 await panel.hover('[role=option] >> nth=2');
-await panel.click('[role=option] >> nth=2 >> button[aria-label="Thêm vào yêu thích"]');
+await panel.click('[role=option] >> nth=2 >> button[aria-label="Add to favorites"]');
 await panel.waitForTimeout(300);
 const stored = await sw.evaluate(() => chrome.storage.local.get(null));
 const bm = Object.values(stored['cmn.bookmarks.v1'] ?? {});
 check('bookmark saved to chrome.storage.local (metadata only)', bm.length === 1 && bm[0].messageId === 'm1-3' && bm[0].conversationId === 'conv-one-1111' && bm[0].preview.length <= 160, JSON.stringify(bm));
 await panel.reload();
 await panel.waitForSelector('[role=option]');
-await panel.click('button[role=radio]:has-text("Yêu thích")');
+await panel.click('button[role=radio]:has-text("Favorites")');
 await panel.waitForTimeout(200);
 const savedRows = await panel.$$eval('[role=option] [data-testid=row-num]', (els) => els.map((e) => e.textContent));
 check('bookmark persists after panel reload', savedRows.length === 1 && savedRows[0] === '#3', JSON.stringify(savedRows));
-await panel.click('button[role=radio]:has-text("Tất cả")');
+await panel.click('button[role=radio]:has-text("All")');
 
 // Keyboard navigation in list
 await panel.focus('[role=listbox]');
@@ -256,22 +256,22 @@ const kbTarget = await page.evaluate(() => { const r = document.querySelector('[
 check('keyboard Arrow/Enter jumps to message #3', kbSel === '#3' && kbTarget.top >= 0 && kbTarget.top < kbTarget.vh, JSON.stringify({ kbSel, ...kbTarget }));
 
 // Index more (all messages are mounted here, so nothing new should be found)
-await panel.click('button[aria-label="Quét toàn bộ"]');
-await panel.waitForFunction(() => /Xong/.test(document.querySelector('[data-testid=banner]')?.textContent ?? ''), null, { timeout: 30000 }).catch(() => null);
+await panel.click('button[aria-label="Index more"]');
+await panel.waitForFunction(() => /Done/.test(document.querySelector('[data-testid=banner]')?.textContent ?? ''), null, { timeout: 30000 }).catch(() => null);
 const bannerText = await panel.textContent('[data-testid=banner]').catch(() => '');
-check('Index more completes and restores position', /Xong/.test(bannerText ?? ''), bannerText);
-check('Index more button is back to idle', (await panel.$$('button[aria-label="Quét toàn bộ"]:not([aria-busy])')).length === 1);
+check('Index more completes and restores position', /Done/.test(bannerText ?? ''), bannerText);
+check('Index more button is back to idle', (await panel.$$('button[aria-label="Index more"]:not([aria-busy])')).length === 1);
 
 // Rescan shows a loading state until the fresh snapshot arrives. Bring the panel
 // to the front first: Playwright's actionability checks wait for animation
 // frames, which are throttled in a background tab.
 await panel.bringToFront();
-const rescanBusy = panel.waitForSelector('button[aria-label="Quét lại"][aria-busy=true]', { timeout: 5000 }).then(() => true, () => false);
-await panel.click('button[aria-label="Quét lại"]');
+const rescanBusy = panel.waitForSelector('button[aria-label="Rescan"][aria-busy=true]', { timeout: 5000 }).then(() => true, () => false);
+await panel.click('button[aria-label="Rescan"]');
 const rescanSawBusy = await rescanBusy;
-await panel.waitForSelector('button[aria-label="Quét lại"][aria-busy=false]', { timeout: 5000 }).catch(() => null);
-check('Rescan shows loading, then returns to idle', rescanSawBusy && (await panel.$$('button[aria-label="Quét lại"][aria-busy=false]')).length === 1, String(rescanSawBusy));
-check('no "Cuộc trò chuyện mới" button and no code/table icons', (await panel.$$('button:has-text("Cuộc trò chuyện mới"), [title="Có code"], [title="Có bảng"]')).length === 0);
+await panel.waitForSelector('button[aria-label="Rescan"][aria-busy=false]', { timeout: 5000 }).catch(() => null);
+check('Rescan shows loading, then returns to idle', rescanSawBusy && (await panel.$$('button[aria-label="Rescan"][aria-busy=false]')).length === 1, String(rescanSawBusy));
+check('no "New chat" button and no code/table icons', (await panel.$$('button:has-text("New chat"), [title="Contains code"], [title="Contains a table"]')).length === 0);
 
 // SPA navigation to another conversation
 await page.evaluate(() => {
@@ -281,10 +281,10 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(1500);
 check('conversation switch re-indexes without mixing', /2 indexed/.test(await statsText()) && (await panel.textContent('[data-testid=conversation-title]')) === 'Kafka chat', `${await statsText()} | ${await panel.textContent('[data-testid=conversation-title]')}`);
-await panel.click('button[role=radio]:has-text("Yêu thích")');
+await panel.click('button[role=radio]:has-text("Favorites")');
 await panel.waitForTimeout(200);
 check('bookmarks scoped to conversation', (await panel.$$('[role=option]')).length === 0);
-await panel.click('button[role=radio]:has-text("Tất cả")');
+await panel.click('button[role=radio]:has-text("All")');
 
 // Navigate back -> the thread's index is remembered: the bookmarked message is
 // listed (not rendered) even though ChatGPT hasn't rendered it.
@@ -293,7 +293,7 @@ await page.evaluate(() => {
   document.getElementById('thread').innerHTML = '';
 });
 await page.waitForTimeout(1200);
-await panel.click('button[role=radio]:has-text("Yêu thích")');
+await panel.click('button[role=radio]:has-text("Favorites")');
 await panel.waitForTimeout(200);
 check('switching back remembers the thread (bookmark listed, not rendered)', (await panel.$$('[role=option][data-unmounted]')).length === 1, String((await panel.$$('[role=option]')).length));
 check('remembered thread keeps its full index', /62 indexed/.test(await statsText()), await statsText());
@@ -308,7 +308,7 @@ await page.addInitScript(() => {
 });
 await page.goto('https://chatgpt.com/c/conv-one-1111?empty');
 await page.waitForTimeout(1500);
-await panel.click('button[role=radio]:has-text("Yêu thích")');
+await panel.click('button[role=radio]:has-text("Favorites")');
 await panel.waitForTimeout(300);
 check('missing bookmarked message shows unavailable state', (await panel.$$('[role=option][data-missing]')).length === 1);
 await panel.screenshot({ path: join(OUT, 'panel-unavailable.png') });
@@ -316,7 +316,7 @@ await panel.screenshot({ path: join(OUT, 'panel-unavailable.png') });
 // Dark mode render
 await page.goto('https://chatgpt.com/c/conv-one-1111');
 await panel.emulateMedia({ colorScheme: 'dark' });
-await panel.click('button[role=radio]:has-text("Tất cả")');
+await panel.click('button[role=radio]:has-text("All")');
 await panel.waitForSelector('[role=option]', { timeout: 10000 });
 await panel.waitForTimeout(500);
 check('reconnects after full page reload', /60 indexed/.test(await statsText()), await statsText());

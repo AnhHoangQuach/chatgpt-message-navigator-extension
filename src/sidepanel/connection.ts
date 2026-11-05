@@ -159,7 +159,7 @@ export class PanelConnection {
   indexMore(): void {
     if (!this.send({ type: 'INDEX_MORE' })) return;
     if (this.state.indexMore?.running) return;
-    const starting: ProgressiveIndexState = { running: true, step: 0, discovered: 0, reachedTop: false, message: 'Đang bắt đầu quét…' };
+    const starting: ProgressiveIndexState = { running: true, step: 0, discovered: 0, reachedTop: false, message: 'Starting to index…' };
     this.setState({ indexMore: starting });
     // No progress report at all (e.g. an outdated content script): don't spin forever.
     setTimeout(() => {

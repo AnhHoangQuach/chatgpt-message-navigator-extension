@@ -127,10 +127,10 @@ export function App() {
 
   const copyRow = useCallback(
     (row: ListRow) => {
-      const label = row.kind === 'message' ? `tin nhắn #${row.message.index + 1}` : 'tin nhắn';
+      const label = row.kind === 'message' ? `message #${row.message.index + 1}` : 'message';
       navigator.clipboard.writeText(rowText(row)).then(
-        () => showBanner('info', `Đã sao chép ${label}.`),
-        () => showBanner('error', 'Không sao chép được. Hãy thử lại.'),
+        () => showBanner('info', `Copied ${label}.`),
+        () => showBanner('error', "Couldn't copy. Please try again."),
       );
     },
     [showBanner],
@@ -190,14 +190,14 @@ export function App() {
     const r = state.scrollResult;
     if (!r || r.ok) return;
     const msg = state.messages.find((m) => m.id === r.messageId);
-    const label = msg ? `Tin nhắn #${msg.index + 1}` : 'Tin nhắn này';
+    const label = msg ? `Message #${msg.index + 1}` : 'This message';
     if (r.reason === 'not-mounted') {
       showBanner(
         'warn',
-        `${label} không hiển thị lại được. ChatGPT có thể đã gỡ nó (đã sửa, đã xóa hoặc ở nhánh khác). Thử “Quét lại” hoặc “Quét toàn bộ”.`,
+        `${label} couldn't be brought back into view. ChatGPT may have removed it (edited, deleted or on another branch). Try “Rescan” or “Index more”.`,
       );
     } else {
-      showBanner('warn', `${label} không có trên trang. Có thể nó ở nhánh khác của cuộc trò chuyện hoặc đã bị xóa.`);
+      showBanner('warn', `${label} can't be found on the page. It may be on another branch of the conversation, or deleted.`);
     }
     connection.clearScrollResult();
   }, [state.scrollResult, state.messages, showBanner, connection]);
@@ -267,70 +267,70 @@ export function App() {
   const selectedRow = rows.find((r) => r.key === selectedKey);
   const activeMessage = state.activeId ? state.messages.find((m) => m.id === state.activeId) : undefined;
   const positionMessage = selectedRow?.kind === 'message' ? selectedRow.message : activeMessage;
-  const position = positionMessage ? `Đang xem #${positionMessage.index + 1}` : '';
+  const position = positionMessage ? `Viewing #${positionMessage.index + 1}` : '';
   const hasWarnings = (state.diagnostics?.warnings.length ?? 0) > 0;
 
   const connecting = state.status === 'connecting';
   const statusText =
     state.status === 'not-chatgpt'
-      ? 'Chưa mở ChatGPT'
+      ? 'ChatGPT not open'
       : state.status === 'unavailable'
-        ? 'Mất kết nối với tab'
+        ? 'Lost connection to the tab'
         : connecting && !state.loading
-          ? 'Đang kết nối lại…'
+          ? 'Reconnecting…'
           : state.conversation
-            ? state.conversation.title || (state.conversation.conversationId ? 'Cuộc trò chuyện chưa đặt tên' : 'Cuộc trò chuyện mới')
-            : 'Đang kết nối…';
+            ? state.conversation.title || (state.conversation.conversationId ? 'Untitled conversation' : 'New chat')
+            : 'Connecting…';
 
   const listLabel =
     filters.role === 'bookmarks'
-      ? 'Yêu thích'
+      ? 'Favorites'
       : !prepared.empty
-        ? 'Kết quả'
+        ? 'Results'
         : filters.role === 'user'
-          ? 'Tin nhắn của bạn'
+          ? 'Your messages'
           : filters.role === 'assistant'
-            ? 'Trả lời của ChatGPT'
-            : 'Tin nhắn';
+            ? 'ChatGPT responses'
+            : 'Messages';
 
   let body: React.ReactNode;
   if (state.status === 'not-chatgpt') {
     body = (
       <EmptyState
-        title="Mở một cuộc trò chuyện ChatGPT"
-        body="Navigator hoạt động trên chatgpt.com. Chuyển sang một tab ChatGPT để xem danh sách tin nhắn."
-        action={{ label: 'Mở ChatGPT', onClick: () => void chrome.tabs.create({ url: CHATGPT_HOME }) }}
+        title="Open a ChatGPT conversation"
+        body="Chat Navigator works on chatgpt.com. Switch to a ChatGPT tab to list its messages."
+        action={{ label: 'Open ChatGPT', onClick: () => void chrome.tabs.create({ url: CHATGPT_HOME }) }}
       />
     );
   } else if (state.status === 'unavailable') {
     body = (
       <EmptyState
-        title="Không kết nối được với tab ChatGPT"
-        body="Tải lại tab ChatGPT rồi thử lại."
-        action={{ label: 'Thử lại', onClick: () => connection.retry() }}
+        title="Can't reach this ChatGPT tab"
+        body="Reload the ChatGPT tab, then try again."
+        action={{ label: 'Retry', onClick: () => connection.retry() }}
       />
     );
   } else if (state.loading) {
-    body = <EmptyState title="Đang kết nối với ChatGPT…" spinner />;
+    body = <EmptyState title="Connecting to ChatGPT…" spinner />;
   } else if (state.messages.length === 0 && rows.length === 0) {
     const warning = state.diagnostics?.warnings[0];
     body = conversationId ? (
       <EmptyState
-        title={warning ? 'Không tìm thấy tin nhắn' : 'Đang chờ tin nhắn…'}
-        body={warning ?? 'Cuộc trò chuyện đang tải.'}
-        action={{ label: 'Quét lại', onClick: rescan, busy: state.rescanning }}
+        title={warning ? 'No messages found' : 'Waiting for messages…'}
+        body={warning ?? 'The conversation is loading.'}
+        action={{ label: 'Rescan', onClick: rescan, busy: state.rescanning }}
       />
     ) : (
-      <EmptyState title="Cuộc trò chuyện mới" body="Tin nhắn sẽ xuất hiện ở đây ngay khi bạn bắt đầu trò chuyện." />
+      <EmptyState title="New chat" body="Messages will appear here as soon as you start the conversation." />
     );
   } else if (rows.length === 0) {
     const noBookmarks = filters.role === 'bookmarks' && prepared.empty;
     body = (
       <EmptyState
-        title={noBookmarks ? 'Chưa có tin nhắn yêu thích' : 'Không có tin nhắn phù hợp'}
-        body={noBookmarks ? 'Bấm biểu tượng ngôi sao trên một tin nhắn (hoặc phím B) để lưu vào đây.' : 'Thử từ khóa khác hoặc bỏ bộ lọc.'}
+        title={noBookmarks ? 'No favorites yet' : 'No matching messages'}
+        body={noBookmarks ? 'Click the star on a message (or press B) to save it here.' : 'Try a different search or clear the filter.'}
         action={{
-          label: 'Xóa tìm kiếm và bộ lọc',
+          label: 'Clear search & filter',
           onClick: () => {
             setRawQuery('');
             setFilters(DEFAULT_FILTERS);
@@ -431,7 +431,7 @@ export function App() {
         {counts.unmounted > 0 && !isFiltering && (
           <span
             className="inline-flex items-center gap-1 tabular-nums"
-            title={`${counts.unmounted} tin nhắn đã thấy trước đó nhưng ChatGPT hiện không hiển thị trên trang`}
+            title={`${counts.unmounted} message(s) seen earlier but not currently rendered on the page`}
           >
             <EyeOff size={11} /> {counts.unmounted}
           </span>

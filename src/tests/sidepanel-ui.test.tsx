@@ -90,15 +90,15 @@ describe('MessageList', () => {
     const options = screen.getAllByRole('option');
     expect(options).toHaveLength(3);
     expect(options[0]!.textContent).toContain('#1');
-    expect(options[0]!.querySelector('[data-testid=role]')!.textContent).toBe('Bạn');
+    expect(options[0]!.querySelector('[data-testid=role]')!.textContent).toBe('You');
     expect(options[1]!.querySelector('[data-testid=role]')!.textContent).toBe('ChatGPT');
     expect(options[1]!.querySelector('[data-testid=row-title]')!.textContent).toBe('Redis is an in-memory store.');
     expect(options[1]!.textContent).toContain('It is often used as a cache.');
-    expect(options[1]!.querySelector('[title="Có code"]')).toBeNull(); // content-type icons were removed
+    expect(options[1]!.querySelector('[title="Contains code"]')).toBeNull(); // content-type icons were removed
     expect(options[1]!.hasAttribute('data-active')).toBe(true);
     expect(options[2]!.hasAttribute('data-unmounted')).toBe(true);
     expect(options[0]!.querySelector('mark')!.textContent).toBe('Redis');
-    expect(screen.getAllByLabelText('Bỏ yêu thích')).toHaveLength(1);
+    expect(screen.getAllByLabelText('Remove from favorites')).toHaveLength(1);
   });
 
   it('supports Arrow keys, Enter and B on the focused list', () => {
@@ -121,27 +121,27 @@ describe('MessageList', () => {
     fireEvent.click(screen.getAllByRole('option')[1]!);
     expect(onJump).toHaveBeenCalledWith(rows[1]);
     onJump.mockClear();
-    fireEvent.click(screen.getAllByLabelText('Thêm vào yêu thích')[0]!);
+    fireEvent.click(screen.getAllByLabelText('Add to favorites')[0]!);
     expect(onToggleBookmark).toHaveBeenCalledWith(rows[1]);
     expect(onJump).not.toHaveBeenCalled();
   });
 
   it('opens the "…" menu with jump, copy and favourite actions', () => {
     const { onJump, onCopy, onToggleBookmark, rows } = setup();
-    fireEvent.click(screen.getAllByLabelText('Thêm thao tác')[1]!);
+    fireEvent.click(screen.getAllByLabelText('More actions')[1]!);
     expect(onJump).not.toHaveBeenCalled();
     const menu = screen.getByRole('menu');
     expect([...menu.querySelectorAll('[role=menuitem]')].map((b) => b.textContent)).toEqual([
-      'Đi tới tin nhắn',
-      'Sao chép nội dung',
-      'Thêm vào yêu thích',
+      'Go to message',
+      'Copy text',
+      'Add to favorites',
     ]);
-    expect(document.activeElement?.textContent).toBe('Đi tới tin nhắn');
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Sao chép nội dung' }));
+    expect(document.activeElement?.textContent).toBe('Go to message');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy text' }));
     expect(onCopy).toHaveBeenCalledWith(rows[1]);
     expect(screen.queryByRole('menu')).toBeNull();
 
-    fireEvent.click(screen.getAllByLabelText('Thêm thao tác')[0]!);
+    fireEvent.click(screen.getAllByLabelText('More actions')[0]!);
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     expect(screen.queryByRole('menu')).toBeNull();
     expect(onToggleBookmark).not.toHaveBeenCalled();

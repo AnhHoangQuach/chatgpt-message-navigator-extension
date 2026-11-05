@@ -414,17 +414,17 @@ export class NavigatorController {
     const conversation = this.indexer.conversationInfo;
     if (strategy === 'none' && conversation.conversationId !== null) {
       warnings.push(
-        'Không tìm thấy tin nhắn nào trên trang. Cuộc trò chuyện có thể đang tải, hoặc ChatGPT đã đổi cấu trúc trang. Hãy bấm Quét lại.',
+        'No messages found on the page. The conversation may still be loading, or ChatGPT changed its page structure. Try Rescan.',
       );
     }
     if (strategy === 'conversation-turn') {
-      warnings.push('Đang dùng cách nhận diện dự phòng: vai trò tin nhắn có thể kém chính xác.');
+      warnings.push('Using fallback detection: message roles may be less accurate.');
     }
     if (mountedCount > 0 && !containerFound) {
-      warnings.push('Không tìm thấy vùng cuộn của cuộc trò chuyện: nhảy tới tin nhắn sẽ cuộn cả trang và không dùng được “Quét toàn bộ”.');
+      warnings.push('Conversation scroll area not detected: jumping scrolls the whole page and “Index more” is unavailable.');
     }
     if (derivedCount > 0) {
-      warnings.push(`${derivedCount} tin nhắn không có ID ổn định; yêu thích trên các tin này sẽ mất khi tải lại trang.`);
+      warnings.push(`${derivedCount} message(s) have no stable ID; favorites on them will not survive a reload.`);
     }
     this.diagnostics = {
       strategy,

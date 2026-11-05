@@ -22,8 +22,8 @@ export const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
         ref={ref}
         className="h-11 w-full rounded-xl border border-line bg-bg pr-24 pl-10 text-[13.5px] text-fg shadow-card placeholder:text-muted focus:border-focus focus:outline-none max-[320px]:pr-10"
         type="search"
-        placeholder="Tìm kiếm tin nhắn…"
-        aria-label="Tìm kiếm tin nhắn"
+        placeholder="Search messages…"
+        aria-label="Search messages"
         autoFocus
         spellCheck={false}
         autoComplete="off"
@@ -50,13 +50,13 @@ export const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           </span>
         )}
         {value ? (
-          <button type="button" className="icon-btn size-7" onClick={onClear} aria-label="Xóa tìm kiếm" title="Xóa tìm kiếm (Esc)">
+          <button type="button" className="icon-btn size-7" onClick={onClear} aria-label="Clear search" title="Clear search (Esc)">
             <X size={15} />
           </button>
         ) : (
           <kbd
             className="grid h-6 min-w-6 place-items-center rounded-md border border-line bg-surface px-1.5 font-sans text-[11px] text-muted"
-            title="Nhấn / để tìm kiếm"
+            title="Press / to search"
           >
             /
           </kbd>

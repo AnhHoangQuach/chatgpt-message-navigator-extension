@@ -57,20 +57,20 @@ Load it in Chrome:
 
 ## Using the navigator
 
-The panel UI is in **Vietnamese**. This README uses the English names below:
+The panel controls:
 
-| In this README | In the panel | What it does |
+| Control | Where | What it does |
 | --- | --- | --- |
-| Index more | **Quét toàn bộ** (layers icon, header) | Scroll through the whole thread once, then return. Shows a spinner while running; click it (or Esc) to stop (*Dừng quét*). |
-| Rescan | **Quét lại** (refresh icon, header) | Re-read the page. The icon spins until the fresh index arrives. |
-| Filters All / Mine / ChatGPT / Saved | **Tất cả / Của tôi / ChatGPT / ☆ Yêu thích** | Saved = bookmarks (*yêu thích*, star icon). |
-| Sort | **Cũ nhất / Mới nhất** (list header) | Oldest-first (default) or newest-first. |
-| Card menu | **⋯** on a card | *Đi tới tin nhắn* (jump), *Sao chép nội dung* (copy the message text), add/remove favourite. |
-| Prev / Next / Bottom / Details | **Trước / Sau / Cuối trang / Chi tiết** (bottom bar) | Step through the list, scroll ChatGPT to the latest message, show indexing diagnostics. |
+| **Index more** | layers icon, header | Scroll through the whole thread once, then return. Shows a spinner while running; click it (or Esc) to stop. |
+| **Rescan** | refresh icon, header | Re-read the page. The icon spins until the fresh index arrives. |
+| **All / Mine / ChatGPT / ☆ Favorites** | filter tabs | Favorites are your bookmarks (star icon). |
+| **Oldest / Newest** | list header | Sort order: oldest-first (default) or newest-first. |
+| **⋯** | on each card | *Go to message*, *Copy text* (the message text), add/remove favorite. |
+| **Prev / Next / Bottom / Details** | bottom bar | Step through the list, scroll ChatGPT to the latest message, show indexing diagnostics. |
 
 Each message is a card: a coloured tile (speech bubble for you, sparkles for ChatGPT), the first sentence in bold, one line of preview (or the text around the search match), the message number `#N`, small state indicators (*writing…* dot, eye-off for *not rendered*, a spinner while a jump to it is in progress), a star and the ⋯ menu.
 
-**Loading states.** Actions that wait for the ChatGPT tab show progress until they finish: a jump shows a spinner on the card (bringing back a virtualised message can take up to ~1.7 s), *Quét lại* spins until the new index arrives, and *Quét toàn bộ* shows a spinner plus a progress notice. Each has a fallback timeout, so nothing spins forever if the tab navigates away.
+**Loading states.** Actions that wait for the ChatGPT tab show progress until they finish: a jump shows a spinner on the card (bringing back a virtualised message can take up to ~1.7 s), *Rescan* spins until the new index arrives, and *Index more* shows a spinner plus a progress notice. Each has a fallback timeout, so nothing spins forever if the tab navigates away.
 
 | Where | Key | Action |
 | --- | --- | --- |
@@ -86,9 +86,9 @@ Each message is a card: a coloured tile (speech bubble for you, sparkles for Cha
 
 Shortcuts are handled only inside the side panel. Nothing is added to the ChatGPT page, so the composer and ChatGPT's own shortcuts keep working as before.
 
-**Prev / Next** (*Trước / Sau*) step through the currently filtered list, in the chosen order. For example, with *Của tôi* selected they jump between your own prompts. If nothing is selected, they step relative to the message you are reading in ChatGPT.
+**Prev / Next** step through the currently filtered list, in the chosen order. For example, with *Mine* selected they jump between your own prompts. If nothing is selected, they step relative to the message you are reading in ChatGPT.
 
-**The list header** shows the list name and how many cards it has, how many messages are *not rendered* (eye-off count: seen earlier, but ChatGPT no longer shows them on the page), which message you are reading (*Đang xem #N*) and the sort order. **Chi tiết** in the bottom bar shows indexing details and diagnostics (a dot marks warnings).
+**The list header** shows the list name and how many cards it has, how many messages are *not rendered* (eye-off count: seen earlier, but ChatGPT no longer shows them on the page), which message you are reading (*Viewing #N*) and the sort order. **Details** in the bottom bar shows indexing details and diagnostics (a dot marks warnings).
 
 ---
 
@@ -323,7 +323,7 @@ Screenshots are saved to `e2e/output/`.
 3. Press **Alt+Shift+J** from the ChatGPT page: the panel opens or focuses, with the cursor in search.
 4. Click messages near the top, middle and bottom. ChatGPT scrolls there, highlights the message briefly, and leaves the composer draft untouched.
 5. Search for a word, then the same word without accents (if it's Vietnamese). Matches are highlighted and the count updates. Esc clears the search.
-6. Try *Mine*, *ChatGPT* and *Saved*, alone and together with a search.
+6. Try *Mine*, *ChatGPT* and *Favorites*, alone and together with a search.
 7. Send a prompt. Your message appears, then the response appears with a "writing…" badge and grows. The badge disappears when it is done, and there are no duplicate rows.
 8. Edit an earlier prompt, or switch branches with `< 2/2 >`. The list matches what's on screen.
 9. Switch to another conversation in the sidebar. The list is replaced, with nothing mixed from the previous conversation. Start a **New chat** and send a prompt: the messages stay when the URL changes to `/c/…`.
