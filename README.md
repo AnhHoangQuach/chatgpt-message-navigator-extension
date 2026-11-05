@@ -64,7 +64,6 @@ The panel controls:
 | **Index more** | layers icon, header | Scroll through the whole thread once, then return. Shows a spinner while running; click it (or Esc) to stop. |
 | **Rescan** | refresh icon, header | Re-read the page. The icon spins until the fresh index arrives. |
 | **All / Mine / ChatGPT / ☆ Favorites** | filter tabs | Favorites are your bookmarks (star icon). |
-| **Oldest / Newest** | list header | Sort order: oldest-first (default) or newest-first. |
 | **⋯** | on each card | *Go to message*, *Copy text* (the message text), add/remove favorite. |
 | **Prev / Next / Bottom / Details** | bottom bar | Step through the list, scroll ChatGPT to the latest message, show indexing diagnostics. |
 
@@ -86,9 +85,9 @@ Each message is a card: a coloured tile (speech bubble for you, sparkles for Cha
 
 Shortcuts are handled only inside the side panel. Nothing is added to the ChatGPT page, so the composer and ChatGPT's own shortcuts keep working as before.
 
-**Prev / Next** step through the currently filtered list, in the chosen order. For example, with *Mine* selected they jump between your own prompts. If nothing is selected, they step relative to the message you are reading in ChatGPT.
+**Prev / Next** step through the currently filtered list. For example, with *Mine* selected they jump between your own prompts. If nothing is selected, they step relative to the message you are reading in ChatGPT.
 
-**The list header** shows the list name and how many cards it has, how many messages are *not rendered* (eye-off count: seen earlier, but ChatGPT no longer shows them on the page), which message you are reading (*Viewing #N*) and the sort order. **Details** in the bottom bar shows indexing details and diagnostics (a dot marks warnings).
+**The list header** shows the list name, how many cards it has, how many messages are *not rendered* (eye-off count: seen earlier, but ChatGPT no longer shows them on the page), and which message you are reading (*Viewing #N*). Messages are always listed in conversation order, oldest first. **Details** in the bottom bar shows indexing details and diagnostics (a dot marks warnings).
 
 ---
 

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RuntimeMessage } from '../shared/messages';
 import { filterMessages, prepareQuery, SearchIndexCache, toSearchString, type PreparedQuery } from '../shared/search';
 import type { FilterState } from '../shared/types';
-import { FilterBar, SortSelect, type SortOrder } from './components/FilterBar';
+import { FilterBar } from './components/FilterBar';
 import type { ListRow } from './components/MessageItem';
 import { MessageList, type MessageListHandle } from './components/MessageList';
 import { HeaderTools, NavigatorToolbar } from './components/NavigatorToolbar';
@@ -37,7 +37,6 @@ export function App() {
   const query = useDebouncedValue(rawQuery, 150, isBlank);
   const prepared = useMemo(() => prepareQuery(query), [query]);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
-  const [sort, setSort] = useState<SortOrder>('oldest');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [banner, setBanner] = useState<BannerData | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -90,7 +89,6 @@ export function App() {
 
   const rows = useMemo<ListRow[]>(() => {
     const out: ListRow[] = filtered.map((m) => ({ kind: 'message', key: m.id, message: m }));
-    if (sort === 'newest') out.reverse();
     if (filters.role === 'bookmarks') {
       const known = new Set(state.messages.map((m) => m.id));
       for (const b of bookmarks.list) {
@@ -100,7 +98,7 @@ export function App() {
       }
     }
     return out;
-  }, [filtered, sort, filters, bookmarks.list, state.messages, prepared]);
+  }, [filtered, filters, bookmarks.list, state.messages, prepared]);
 
   const isFiltering = !prepared.empty || filters.role !== 'all';
 
@@ -150,7 +148,7 @@ export function App() {
         const active = state.activeId ? state.messages.find((m) => m.id === state.activeId) : undefined;
         if (active) {
           // The message being read is filtered out: step to the nearest listed one in that direction.
-          const after = (r: ListRow) => r.kind === 'message' && (sort === 'oldest' ? r.message.index > active.index : r.message.index < active.index);
+          const after = (r: ListRow) => r.kind === 'message' && r.message.index > active.index;
           if (dir === 1) next = rows.findIndex(after);
           else {
             for (let i = rows.length - 1; i >= 0; i--) {
@@ -170,7 +168,7 @@ export function App() {
       jump(row);
       listRef.current?.scrollToKey(row.key);
     },
-    [rows, selectedKey, state.activeId, state.messages, sort, jump],
+    [rows, selectedKey, state.activeId, state.messages, jump],
   );
 
   const clearSearch = useCallback(() => {
@@ -439,7 +437,6 @@ export function App() {
         <span data-testid="position" className="ml-auto truncate tabular-nums" aria-live="polite">
           {position}
         </span>
-        <SortSelect sort={sort} onChange={setSort} />
       </div>
 
       <main className="flex min-h-0 flex-1 flex-col">{body}</main>
