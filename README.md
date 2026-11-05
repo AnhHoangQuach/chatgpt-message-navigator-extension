@@ -1,4 +1,4 @@
-# Chat Navigator
+# AI Chat Navigator
 
 > Works on chatgpt.com. Not affiliated with, endorsed by, or sponsored by OpenAI. "ChatGPT" is a trademark of OpenAI.
 
@@ -50,7 +50,7 @@ Load it in Chrome:
 | `pnpm test` | Unit and integration tests (Vitest + jsdom). |
 | `pnpm test:e2e` | Optional end-to-end run of the built extension in real Chromium (see [Testing](#testing)). |
 | `pnpm typecheck` | TypeScript only. |
-| `pnpm package` | Build and pack `dist/` into `release/chat-navigator-<version>.zip` for the Chrome Web Store. |
+| `pnpm package` | Build and pack `dist/` into `release/ai-chat-navigator-<version>.zip` for the Chrome Web Store. |
 | `pnpm icons` | Regenerate the PNG icons in `public/icons/` from `assets/brand/logo-source.png` (uses `sharp`). |
 
 ---
@@ -110,7 +110,7 @@ Shortcuts are handled only inside the side panel. Nothing is added to the ChatGP
                │  panel → content: SCROLL_TO, RESCAN, INDEX_MORE, …
                │  content → panel: SNAPSHOT, PATCH (changed msgs only),
                │                   ACTIVE_MESSAGE, SCROLL_RESULT, INDEX_MORE_STATE
-┌──────────────┴───────────── Side panel (React) ─────────────────────────┐
+┌──────────────┴───────────── Side panel (Preact) ────────────────────────┐
 │ PanelConnection  follows the active tab, (re)connects, injects if needed│
 │ SearchIndexCache precomputed lower-case / accent-folded text per revision│
 │ App + components: SearchBar, FilterBar, MessageList (virtualized),      │
@@ -137,24 +137,18 @@ service-worker.js: opens the panel from the toolbar button and handles Alt+Shift
 ```ts
 interface ChatMessage {
   id: string;                 // data-message-id, or turn:<testid>, or a derived per-element ID
-  idSource: 'message-id' | 'turn' | 'derived';
   conversationId: string;
   role: 'user' | 'assistant';
   index: number;              // chronological position in the index
   turnNumber: number | null;  // from data-testid="conversation-turn-N"
-  preview: string;            // ≤ 280 chars
   text: string;               // normalized plain text, capped at 50,000 chars
-  truncated: boolean;
-  hasCode: boolean;
-  hasTable: boolean;
-  headings: string[];
   mounted: boolean;           // currently attached to ChatGPT's DOM?
   streaming: boolean;
   revision: number;           // bumps on change; used for memoization
 }
 ```
 
-The side panel adds `searchText` (lower-cased NFC) and `foldedText` (lower-cased, without diacritics, đ→d). They are computed once per message revision rather than sent over the port, which halves the payload during streaming.
+The side panel derives everything else from `text`: the card title and preview, plus `searchText` (lower-cased NFC) and `foldedText` (lower-cased, without diacritics, đ→d). These are computed once per message revision rather than sent over the port, which keeps the payload small during streaming.
 
 ### Ordering, deduplication and removal rules (`MessageIndexer`)
 
@@ -187,7 +181,6 @@ Three message strategies are tried in order; the ⓘ panel shows which one match
 | Order / position | DOM order | `conversation-turn-N` numbers. |
 | Message body | `.markdown` / `.prose` (assistant), `.whitespace-pre-wrap` (user) | The whole message element (turn-key responses are always read whole). |
 | Skipped text | `button, svg, textarea, input, .sr-only, [aria-hidden="true"]`, `[data-code-block-controls]`, `[data-loading-indicator]`, … | — |
-| Code / tables / headings | `pre`, `code[class*="language-"]`, `.cm-editor`, `[data-code-block]` / `table`, `[data-d-table-viewport]` / `h1`–`h6`, `[role="heading"]` | — |
 | Generating | `[data-testid="stop-button"]`, `button[aria-label="Stop streaming"]`, a *Stop…* button in `[data-chatgpt-composer]` | `.result-streaming`, `[data-is-streaming="true"]`, `[data-talvt-turn-state]` other than complete/error/stopped |
 | Composer (mutations ignored) | `form`, `#prompt-textarea`, `[data-chatgpt-composer]`, `[data-composer-input]` | — |
 | Scroll container | `.thread-scroll-container` | Nearest scrollable ancestor of the first message. |
@@ -219,7 +212,7 @@ The navigator can only index what ChatGPT has **rendered in the tab**. It tracks
 - The index lives in memory (never in storage). The last 10 threads visited in the tab keep their index and message offsets, so switching back restores them. Reloading the page starts fresh.
 - ChatGPT keeps threads opened earlier mounted but hidden (`[data-app-shell-active-page="false"]`). All reading, scrolling and observing is scoped to the active page, so a hidden thread never gets indexed or scrolled by mistake.
 - Message numbers (`#N`) are positions **within the index**. If older messages were never loaded, the numbering starts from the earliest one seen.
-- Full text per message is capped at 50,000 characters for search. The preview is 280 characters.
+- Full text per message is capped at 50,000 characters for search.
 
 ---
 
@@ -242,14 +235,14 @@ The navigator can only index what ChatGPT has **rendered in the tab**. It tracks
 
 This extension can read private conversations, so it is deliberately minimal:
 
-- **No network access.** No `fetch` or XHR, no analytics, no remote code. The build contains no `eval` / `new Function`, and the extension-page CSP is `script-src 'self'`. Tailwind CSS is compiled at build time into a static stylesheet, and lucide-react icons are bundled as inline SVG components, so the panel loads no fonts, styles or icons from the network.
+- **No network access.** No `fetch` or XHR, no analytics, no remote code. The build contains no `eval` / `new Function`, and the extension-page CSP is `script-src 'self'`. Tailwind CSS is compiled at build time into a static stylesheet, and Lucide icons are bundled as inline SVG components, so the panel loads no fonts, styles or icons from the network.
 - **Nothing leaves your browser.**
   - Conversation text goes only from the ChatGPT tab to this extension's side panel, over a `chrome.runtime` Port.
   - The content script accepts Port connections only from this extension.
 - **No cookies, tokens, credentials or ChatGPT APIs.** The extension reads only the rendered DOM of the open conversation. It does not call ChatGPT's internal APIs or intercept requests.
 - **Not stored by default.** The message index is kept in memory only, and is discarded when the panel closes or the page reloads.
 - **Bookmarks store only metadata:** conversation ID, message ID, role, a ≤160-character preview, and a timestamp. They are kept in `chrome.storage.local`, which is local and not synced.
-- **Safe rendering.** Message text is rendered as React text nodes. Matches are wrapped in `<mark>` elements built by React, never with `innerHTML` (there is a test for this).
+- **Safe rendering.** Message text is rendered as Preact text nodes. Matches are wrapped in `<mark>` elements built by Preact, never with `innerHTML` (there is a test for this).
 - **The ChatGPT page is never modified.**
   - The highlight is a Web Animations API animation (`element.animate`), so no attributes, classes or content change.
   - The extension never focuses, clicks, or types into the page.
@@ -269,11 +262,11 @@ This extension can read private conversations, so it is deliberately minimal:
 
 ### Unit and integration tests
 
-Run with `pnpm test`: 103 tests in jsdom, using mocked ChatGPT-shaped DOM fixtures.
+Run with `pnpm test`: 107 tests in jsdom, using mocked ChatGPT-shaped DOM fixtures.
 
 | Requirement | Tests |
 | --- | --- |
-| Extract user and assistant messages; skip buttons, labels and composer; detect code, tables and headings; fallbacks | `dom-adapter.test.ts` |
+| Extract user and assistant messages; skip buttons, labels and composer; fallbacks | `dom-adapter.test.ts` |
 | Deduplication | `message-indexer.test.ts` (dedup) |
 | Conversation and navigation detection | `dom-adapter.test.ts` (URLs), `navigator-controller.test.ts` (SPA switch, new chat → permanent URL) |
 | Search and filtering (Vietnamese, NFD, AND terms, highlighting, snippets) | `search.test.ts` |

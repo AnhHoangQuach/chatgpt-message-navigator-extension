@@ -1,9 +1,10 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { RowMenu, type RowMenuState } from './RowMenu';
+import type { Ref } from 'preact';
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { PreparedQuery } from '../../shared/search';
 import { MessageItem, type ListRow } from './MessageItem';
+import { RowMenu, type RowMenuState } from './RowMenu';
 
-export const ROW_HEIGHT = 72; // 64px card + 8px gap
+const ROW_HEIGHT = 72; // 64px card + 8px gap
 const OVERSCAN = 8;
 /** Don't auto-follow the active message for this long after the user touched the list. */
 const INTERACTION_GRACE_MS = 4000;
@@ -14,6 +15,7 @@ export interface MessageListHandle {
 }
 
 interface Props {
+  handleRef?: Ref<MessageListHandle>;
   rows: ListRow[];
   query: PreparedQuery;
   selectedKey: string | null;
@@ -33,10 +35,20 @@ interface Props {
  * aria-activedescendant). Only rows in view (+ overscan) are rendered, so it
  * stays fast with thousands of messages. Rows have a fixed height.
  */
-export const MessageList = forwardRef<MessageListHandle, Props>(function MessageList(
-  { rows, query, selectedKey, activeKey, bookmarkedIds, canBookmark, onSelect, onJump, onToggleBookmark, onCopy, pendingId = null },
-  ref,
-) {
+export function MessageList({
+  handleRef,
+  rows,
+  query,
+  selectedKey,
+  activeKey,
+  bookmarkedIds,
+  canBookmark,
+  onSelect,
+  onJump,
+  onToggleBookmark,
+  onCopy,
+  pendingId = null,
+}: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewport, setViewport] = useState(600);
@@ -84,7 +96,7 @@ export const MessageList = forwardRef<MessageListHandle, Props>(function Message
   );
 
   useImperativeHandle(
-    ref,
+    handleRef ?? null,
     () => ({
       focus: () => scrollRef.current?.focus(),
       scrollToKey: (key, align) => scrollToIndex(indexOfKey(key), align),
@@ -113,10 +125,10 @@ export const MessageList = forwardRef<MessageListHandle, Props>(function Message
     scrollToIndex(clamped);
   };
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const onKeyDown = (e: KeyboardEvent) => {
     markInteraction();
     const page = Math.max(1, Math.floor(viewport / ROW_HEIGHT) - 1);
-    const current = selectedIndex === -1 ? (indexOfKey(activeKey) === -1 ? -1 : indexOfKey(activeKey)) : selectedIndex;
+    const current = selectedIndex === -1 ? indexOfKey(activeKey) : selectedIndex;
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
@@ -191,49 +203,51 @@ export const MessageList = forwardRef<MessageListHandle, Props>(function Message
   );
 
   return (
-    <div
-      ref={scrollRef}
-      className="group/list min-h-0 flex-1 overflow-y-auto overscroll-contain focus-visible:shadow-[inset_0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
-      role="listbox"
-      tabIndex={0}
-      aria-label="Conversation messages"
-      aria-activedescendant={selectedIndex >= start && selectedIndex < end ? `cmn-row-${selectedIndex}` : undefined}
-      onScroll={(e) => {
-        setScrollTop(e.currentTarget.scrollTop);
-        if (menu) setMenu(null);
-      }}
-      onKeyDown={onKeyDown}
-      onWheel={markInteraction}
-      onPointerDown={markInteraction}
-      onPointerEnter={() => (pointerInside.current = true)}
-      onPointerLeave={() => {
-        pointerInside.current = false;
-        markInteraction();
-      }}
-    >
-      <div className="relative w-full" style={{ height: rows.length * ROW_HEIGHT }}>
-        {visible.map((row, i) => {
-          const index = start + i;
-          const messageId = row.kind === 'message' ? row.message.id : row.bookmark.messageId;
-          return (
-            <MessageItem
-              key={row.key}
-              row={row}
-              domId={`cmn-row-${index}`}
-              top={index * ROW_HEIGHT}
-              height={ROW_HEIGHT}
-              query={query}
-              selected={row.key === selectedKey}
-              active={row.key === activeKey}
-              bookmarked={bookmarkedIds.has(messageId)}
-              pending={messageId === pendingId}
-              canBookmark={canBookmark}
-              onClick={handleClick}
-              onToggleBookmark={onToggleBookmark}
-              onMenu={openMenu}
-            />
-          );
-        })}
+    <>
+      <div
+        ref={scrollRef}
+        className="group/list min-h-0 flex-1 overflow-y-auto overscroll-contain focus-visible:shadow-[inset_0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
+        role="listbox"
+        tabIndex={0}
+        aria-label="Conversation messages"
+        aria-activedescendant={selectedIndex >= start && selectedIndex < end ? `cmn-row-${selectedIndex}` : undefined}
+        onScroll={(e) => {
+          setScrollTop(e.currentTarget.scrollTop);
+          if (menu) setMenu(null);
+        }}
+        onKeyDown={onKeyDown}
+        onWheel={markInteraction}
+        onPointerDown={markInteraction}
+        onPointerEnter={() => (pointerInside.current = true)}
+        onPointerLeave={() => {
+          pointerInside.current = false;
+          markInteraction();
+        }}
+      >
+        <div className="relative w-full" style={{ height: rows.length * ROW_HEIGHT }}>
+          {visible.map((row, i) => {
+            const index = start + i;
+            const messageId = row.kind === 'message' ? row.message.id : row.bookmark.messageId;
+            return (
+              <MessageItem
+                key={row.key}
+                row={row}
+                domId={`cmn-row-${index}`}
+                top={index * ROW_HEIGHT}
+                height={ROW_HEIGHT}
+                query={query}
+                selected={row.key === selectedKey}
+                active={row.key === activeKey}
+                bookmarked={bookmarkedIds.has(messageId)}
+                pending={messageId === pendingId}
+                canBookmark={canBookmark}
+                onClick={handleClick}
+                onToggleBookmark={onToggleBookmark}
+                onMenu={openMenu}
+              />
+            );
+          })}
+        </div>
       </div>
       {menu && (
         <RowMenu
@@ -249,6 +263,6 @@ export const MessageList = forwardRef<MessageListHandle, Props>(function Message
           onToggleBookmark={onToggleBookmark}
         />
       )}
-    </div>
+    </>
   );
-});
+}

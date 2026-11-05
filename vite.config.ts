@@ -2,7 +2,6 @@ import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -26,7 +25,7 @@ function copyManifest(): Plugin {
  * (see vite.content.config.ts) because content scripts cannot be ES modules.
  */
 export default defineConfig({
-  plugins: [react(), tailwindcss(), copyManifest()],
+  plugins: [tailwindcss(), copyManifest()],
   base: '',
   publicDir: 'public',
   build: {

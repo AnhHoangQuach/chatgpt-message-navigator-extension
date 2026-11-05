@@ -9,7 +9,7 @@ import type { RuntimeMessage } from '../shared/messages';
 
 function configurePanel(): void {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error: unknown) => {
-    console.warn('[Chat Navigator] setPanelBehavior failed', error);
+    console.warn('[AI Chat Navigator] setPanelBehavior failed', error);
   });
 }
 
@@ -30,6 +30,6 @@ chrome.commands.onCommand.addListener((command, tab) => {
       return chrome.runtime.sendMessage(message).catch(() => undefined);
     })
     .catch((error: unknown) => {
-      console.warn('[Chat Navigator] could not open side panel', error);
+      console.warn('[AI Chat Navigator] could not open side panel', error);
     });
 });

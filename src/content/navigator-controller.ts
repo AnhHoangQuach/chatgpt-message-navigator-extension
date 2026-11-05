@@ -2,7 +2,7 @@ import type { ContentToPanel, PanelToContent } from '../shared/messages';
 import { debounce } from '../shared/timing';
 import type { ConversationInfo, Diagnostics, IndexSnapshot, ProgressiveIndexState } from '../shared/types';
 import { ActiveTracker } from './active-tracker';
-import { ChatGPTDomAdapter, type ChangeSet, type ExtractedContent } from './chatgpt-dom-adapter';
+import { ChatGPTDomAdapter, type ChangeSet } from './chatgpt-dom-adapter';
 import { MessageIndexer, type IndexState, type ScannedMessage } from './message-indexer';
 import { ProgressiveIndexer } from './progressive-indexer';
 import { ScrollManager } from './scroll-manager';
@@ -12,7 +12,7 @@ export interface PanelChannel {
   post(message: ContentToPanel): void;
 }
 
-export interface ControllerOptions {
+interface ControllerOptions {
   doc?: Document;
   win?: Window;
   scanDebounceMs?: number;
@@ -57,7 +57,7 @@ export class NavigatorController {
   private started = false;
   private stopObserving: (() => void) | null = null;
   private dirty = new Set<Element>();
-  private extractionCache = new WeakMap<Element, { content: ExtractedContent; count: number }>();
+  private extractionCache = new WeakMap<Element, { text: string; count: number }>();
   /** IDs of the previous conversation; ignored while its DOM is being torn down. */
   private staleIds = new Set<string>();
   private lastHref = '';
@@ -109,10 +109,6 @@ export class NavigatorController {
 
   get isStarted(): boolean {
     return this.started;
-  }
-
-  get channelCount(): number {
-    return this.channels.size;
   }
 
   // ---------------------------------------------------------------------------
@@ -304,7 +300,7 @@ export class NavigatorController {
         (group.turnElement !== null && this.dirty.has(group.turnElement));
       let cached = this.extractionCache.get(group.element);
       if (!cached || isDirty || cached.count !== group.elements.length) {
-        cached = { content: this.adapter.extractContent(group), count: group.elements.length };
+        cached = { text: this.adapter.extractText(group), count: group.elements.length };
         this.extractionCache.set(group.element, cached);
       }
       // Only the newest message can be streaming; checking just that one keeps
@@ -313,10 +309,9 @@ export class NavigatorController {
         i === lastIndex && group.role === 'assistant' && (generating || this.adapter.hasStreamingMarker(group));
       scanned.push({
         id,
-        idSource: source,
         role: group.role,
         turnNumber: group.turnNumber,
-        content: cached.content,
+        text: cached.text,
         streaming,
         element: group.element,
       });

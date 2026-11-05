@@ -1,6 +1,5 @@
-import { Copy, CornerDownRight, Star } from 'lucide-react';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { Copy, CornerDownRight, Star } from 'lucide-preact';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ListRow } from './MessageItem';
 
 export interface RowMenuState {
@@ -20,7 +19,10 @@ interface Props {
 
 const WIDTH = 200;
 
-/** The "…" menu of a message card (WAI-ARIA menu: arrow keys, Enter, Esc). */
+/**
+ * The "…" menu of a message card (WAI-ARIA menu: arrow keys, Enter, Esc).
+ * Fixed-positioned next to its anchor, so it needs no portal.
+ */
 export function RowMenu({ menu, bookmarked, canBookmark, onClose, onJump, onCopy, onToggleBookmark }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: menu.anchor.bottom + 4, left: menu.anchor.right - WIDTH });
@@ -62,7 +64,7 @@ export function RowMenu({ menu, bookmarked, canBookmark, onClose, onJump, onCopy
     };
   }, [onClose]);
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
+  const onKeyDown = (e: KeyboardEvent) => {
     const buttons = Array.from(ref.current?.querySelectorAll<HTMLButtonElement>('[role=menuitem]:not(:disabled)') ?? []);
     const i = buttons.indexOf(document.activeElement as HTMLButtonElement);
     if (e.key === 'Escape' || e.key === 'Tab') {
@@ -76,7 +78,7 @@ export function RowMenu({ menu, bookmarked, canBookmark, onClose, onJump, onCopy
     }
   };
 
-  return createPortal(
+  return (
     <div
       ref={ref}
       role="menu"
@@ -101,7 +103,6 @@ export function RowMenu({ menu, bookmarked, canBookmark, onClose, onJump, onCopy
           {item.label}
         </button>
       ))}
-    </div>,
-    document.body,
+    </div>
   );
 }

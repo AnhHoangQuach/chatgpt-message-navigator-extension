@@ -18,8 +18,6 @@
   --cmn-accent: #d99a25;
   --cmn-accent-strong: #8a5200;
   --cmn-accent-soft: rgba(217, 154, 37, 0.16);
-  /* Text/icons on a solid --cmn-accent fill (10:1). */
-  --cmn-accent-ink: #1f1600;
   --cmn-ok: #16a34a;
   --cmn-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
   --cmn-user: #2f6fde;
@@ -45,7 +43,6 @@
     --cmn-accent: #d99a25;
     --cmn-accent-strong: #e0a63a;
     --cmn-accent-soft: rgba(217, 154, 37, 0.16);
-    --cmn-accent-ink: #1f1600;
     --cmn-ok: #4ade80;
     --cmn-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     --cmn-user: #7aa7ff;
@@ -70,7 +67,6 @@
   --color-accent: var(--cmn-accent);
   --color-accent-strong: var(--cmn-accent-strong);
   --color-accent-soft: var(--cmn-accent-soft);
-  --color-accent-ink: var(--cmn-accent-ink);
   --color-ok: var(--cmn-ok);
   --shadow-card: var(--cmn-card-shadow);
   --color-user: var(--cmn-user);

@@ -7,10 +7,9 @@ const conv = parseConversation('https://chatgpt.com/c/conv-aaaaaa');
 function msg(id: string, text = `text of ${id}`, extra: Partial<ScannedMessage> = {}): ScannedMessage {
   return {
     id,
-    idSource: 'message-id',
     role: id.startsWith('u') ? 'user' : 'assistant',
     turnNumber: null,
-    content: { text, truncated: false, hasCode: false, hasTable: false, headings: [] },
+    text,
     streaming: false,
     element: document.createElement('div'),
     ...extra,
@@ -162,13 +161,11 @@ describe('MessageIndexer: streaming responses', () => {
     expect(ix.size).toBe(2);
   });
 
-  it('builds a truncated preview for long messages', () => {
+  it('keeps the last known text while a prompt is being edited (empty scan text)', () => {
     const ix = new MessageIndexer(conv);
-    ix.applyScan([msg('a1', 'word '.repeat(200).trim())]);
-    const m = ix.snapshot()[0]!;
-    expect(m.preview.length).toBeLessThanOrEqual(281);
-    expect(m.preview.endsWith('…')).toBe(true);
-    expect(m.text.length).toBe(999);
+    ix.applyScan([msg('u1', 'original prompt')]);
+    ix.applyScan([msg('u1', '')]);
+    expect(ix.snapshot()[0]!.text).toBe('original prompt');
   });
 });
 

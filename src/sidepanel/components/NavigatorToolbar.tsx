@@ -1,5 +1,5 @@
-import { ArrowDownToLine, ChevronDown, ChevronUp, Info, Layers, LoaderCircle, RefreshCw } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { ArrowDownToLine, ChevronDown, ChevronUp, Info, Layers, LoaderCircle, RefreshCw } from 'lucide-preact';
+import type { ComponentChildren } from 'preact';
 import type { ProgressiveIndexState } from '../../shared/types';
 import { cn } from '../lib/cn';
 
@@ -78,7 +78,7 @@ function NavItem({
   active,
   ...rest
 }: {
-  icon: ReactNode;
+  icon: ComponentChildren;
   label: string;
   title: string;
   onClick(): void;

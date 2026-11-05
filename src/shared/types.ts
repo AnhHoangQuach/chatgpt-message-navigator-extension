@@ -5,28 +5,19 @@ export type MessageRole = 'user' | 'assistant';
  * script to the side panel.
  *
  * `text` is the whitespace-normalised plain text (capped, see MAX_TEXT_LENGTH).
- * The side panel derives the lower-cased / accent-folded search strings from it
- * once per message revision (see shared/search.ts), so they are not duplicated
- * over the messaging channel.
+ * The side panel derives the card title, preview and search strings from it
+ * (see shared/search.ts), so none of them travel over the messaging channel.
  */
 export interface ChatMessage {
   /** Stable ID: ChatGPT's data-message-id when present, otherwise a derived ID. */
   id: string;
-  /** Where the ID came from. `derived` IDs are stable only within one page session. */
-  idSource: 'message-id' | 'turn' | 'derived';
   conversationId: string;
   role: MessageRole;
   /** 0-based chronological position among indexed messages. */
   index: number;
   /** Absolute turn number parsed from the DOM when available (conversation-turn-N). */
   turnNumber: number | null;
-  preview: string;
   text: string;
-  /** True when `text` was cut at MAX_TEXT_LENGTH. */
-  truncated: boolean;
-  hasCode: boolean;
-  hasTable: boolean;
-  headings: string[];
   /** Whether the message element is currently attached to the ChatGPT DOM. */
   mounted: boolean;
   /** True while the assistant is still producing this message. */
@@ -80,7 +71,6 @@ export interface FilterState {
 
 export interface ProgressiveIndexState {
   running: boolean;
-  step: number;
   discovered: number;
   reachedTop: boolean;
   message: string;

@@ -1,8 +1,6 @@
 export interface Debounced<A extends unknown[]> {
   (...args: A): void;
   cancel(): void;
-  flush(): void;
-  pending(): boolean;
 }
 
 /**
@@ -44,10 +42,6 @@ export function debounce<A extends unknown[]>(
     clear();
     lastArgs = null;
   };
-  debounced.flush = () => {
-    if (lastArgs) invoke();
-  };
-  debounced.pending = () => lastArgs !== null;
   return debounced;
 }
 

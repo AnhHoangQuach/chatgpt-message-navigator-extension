@@ -12,17 +12,11 @@ import type { ChatMessage, FilterState } from '../shared/types';
 function message(id: string, text: string, extra: Partial<ChatMessage> = {}): ChatMessage {
   return {
     id,
-    idSource: 'message-id',
     conversationId: 'c1',
     role: 'user',
     index: 0,
     turnNumber: null,
-    preview: text.slice(0, 280),
     text,
-    truncated: false,
-    hasCode: false,
-    hasTable: false,
-    headings: [],
     mounted: true,
     streaming: false,
     revision: 1,
@@ -40,9 +34,9 @@ function search(messages: ChatMessage[], q: string, filters: FilterState = ALL, 
 
 const corpus = [
   message('1', 'What is Redis?'),
-  message('2', 'Redis is an in-memory data store. MULTI, EXEC and WATCH form transactions.', { role: 'assistant', hasCode: true }),
+  message('2', 'Redis is an in-memory data store. MULTI, EXEC and WATCH form transactions.', { role: 'assistant' }),
   message('3', 'Giải thích về hàng đợi RabbitMQ bằng tiếng Việt'),
-  message('4', 'RabbitMQ prefetch controls unacknowledged deliveries.', { role: 'assistant', hasTable: true }),
+  message('4', 'RabbitMQ prefetch controls unacknowledged deliveries.', { role: 'assistant' }),
   message('5', 'Đặt câu hỏi về Docker'),
 ];
 
@@ -124,16 +118,15 @@ describe('highlighting', () => {
 
   it('builds a snippet around a match located beyond the preview', () => {
     const text = 'intro '.repeat(100) + 'the NEEDLE is here ' + 'outro '.repeat(50);
-    const m = message('x', text);
-    const snippet = buildSnippet(m, prepareQuery('needle'));
+    const snippet = buildSnippet(text, prepareQuery('needle'));
     expect(snippet.text.startsWith('…')).toBe(true);
     const [r] = snippet.ranges;
     expect(snippet.text.slice(r!.start, r!.end)).toBe('NEEDLE');
   });
 
-  it('uses the preview when there is no query', () => {
-    const m = message('x', 'hello world');
-    expect(buildSnippet(m, prepareQuery(''))).toEqual({ text: 'hello world', ranges: [] });
+  it('uses the start of the text when there is no query', () => {
+    expect(buildSnippet('hello world', prepareQuery(''))).toEqual({ text: 'hello world', ranges: [] });
+    expect(buildSnippet('x'.repeat(300), prepareQuery('')).text).toBe('x'.repeat(240) + '…');
   });
 });
 

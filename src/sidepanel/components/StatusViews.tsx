@@ -1,4 +1,4 @@
-import { Info, LoaderCircle, MessageSquareText, X } from 'lucide-react';
+import { Info, LoaderCircle, MessageSquareText, X } from 'lucide-preact';
 import type { Diagnostics } from '../../shared/types';
 import { cn } from '../lib/cn';
 

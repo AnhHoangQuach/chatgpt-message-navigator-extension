@@ -28,7 +28,7 @@ import type { ConversationInfo, ExtractionStrategy, MessageRole } from '../share
  * shows a diagnostic with a Rescan button.
  */
 
-export const SELECTORS = {
+const SELECTORS = {
   authorRole: '[data-message-author-role]',
   turn: '[data-testid^="conversation-turn-"]',
   /** The visible page of the app shell (inactive pages hold other, hidden threads). */
@@ -50,9 +50,6 @@ export const SELECTORS = {
   turnRoleAttr: 'data-turn',
   userBody: '.whitespace-pre-wrap',
   assistantBody: '.markdown, .prose',
-  code: 'pre, code[class*="language-"], .cm-editor, [data-code-block]',
-  table: 'table, [data-d-table-viewport]',
-  headings: 'h1, h2, h3, h4, h5, h6, [role="heading"]',
   /** Never read text from these (UI chrome, screen-reader labels, edit boxes). */
   skip:
     'button, svg, style, script, noscript, textarea, input, select, template, .sr-only, [aria-hidden="true"], [data-code-block-controls], [data-loading-indicator]',
@@ -69,8 +66,6 @@ export const SELECTORS = {
 } as const;
 
 export const MAX_TEXT_LENGTH = 50_000;
-export const PREVIEW_LENGTH = 280;
-const MAX_HEADINGS = 20;
 
 const BLOCK_TAGS = new Set([
   'ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'BR', 'DD', 'DETAILS', 'DIV', 'DL', 'DT', 'FIGCAPTION',
@@ -79,7 +74,7 @@ const BLOCK_TAGS = new Set([
 ]);
 
 /** One logical message: one or more consecutive same-role elements in a turn. */
-export interface MessageGroup {
+interface MessageGroup {
   role: MessageRole;
   /** First element; used for scrolling, highlighting and intersection tracking. */
   element: Element;
@@ -89,17 +84,9 @@ export interface MessageGroup {
   messageId: string | null;
 }
 
-export interface CollectResult {
+interface CollectResult {
   strategy: ExtractionStrategy;
   groups: MessageGroup[];
-}
-
-export interface ExtractedContent {
-  text: string;
-  truncated: boolean;
-  hasCode: boolean;
-  hasTable: boolean;
-  headings: string[];
 }
 
 export interface ChangeSet {
@@ -156,16 +143,12 @@ function asRole(value: string | null | undefined): MessageRole | null {
  * `<p>a</p><p>b</p>` becomes "a b") and skips UI chrome. Works without layout,
  * unlike innerText, and stops early once `limit` characters are collected.
  */
-export function extractPlainText(root: Element, limit = MAX_TEXT_LENGTH): { text: string; truncated: boolean } {
+export function extractPlainText(root: Element, limit = MAX_TEXT_LENGTH): string {
   const parts: string[] = [];
   let length = 0;
-  let truncated = false;
   const visit = (node: Node): void => {
     for (let child = node.firstChild; child; child = child.nextSibling) {
-      if (length >= limit) {
-        truncated = true;
-        return;
-      }
+      if (length >= limit) return;
       if (child.nodeType === Node.TEXT_NODE) {
         const data = (child as Text).data;
         parts.push(data);
@@ -181,12 +164,7 @@ export function extractPlainText(root: Element, limit = MAX_TEXT_LENGTH): { text
     }
   };
   visit(root);
-  let text = normalizeText(parts.join(''));
-  if (text.length > limit) {
-    text = text.slice(0, limit);
-    truncated = true;
-  }
-  return { text, truncated };
+  return normalizeText(parts.join('')).slice(0, limit);
 }
 
 export class ChatGPTDomAdapter {
@@ -321,35 +299,17 @@ export class ChatGPTDomAdapter {
     return { id: derived, source: 'derived' };
   }
 
-  extractContent(group: MessageGroup): ExtractedContent {
+  /** Plain text of a message (all of its elements), capped at MAX_TEXT_LENGTH. */
+  extractText(group: MessageGroup): string {
     const texts: string[] = [];
-    let truncated = false;
-    let hasCode = false;
-    let hasTable = false;
-    const headings: string[] = [];
     let remaining = MAX_TEXT_LENGTH;
     for (const el of group.elements) {
-      const body = this.findBody(el, group.role);
-      const part = extractPlainText(body, remaining);
-      if (part.text) texts.push(part.text);
-      remaining -= part.text.length;
-      truncated ||= part.truncated;
-      hasCode ||= body.querySelector(SELECTORS.code) !== null;
-      hasTable ||= body.querySelector(SELECTORS.table) !== null;
-      if (headings.length < MAX_HEADINGS) {
-        for (const h of Array.from(body.querySelectorAll(SELECTORS.headings))) {
-          if (h.closest(SELECTORS.skip)) continue;
-          const t = normalizeText(h.textContent ?? '');
-          if (t) headings.push(t.slice(0, 120));
-          if (headings.length >= MAX_HEADINGS) break;
-        }
-      }
-      if (remaining <= 0) {
-        truncated = true;
-        break;
-      }
+      if (remaining <= 0) break;
+      const text = extractPlainText(this.findBody(el, group.role), remaining);
+      if (text) texts.push(text);
+      remaining -= text.length;
     }
-    return { text: texts.join(' '), truncated, hasCode, hasTable, headings };
+    return texts.join(' ');
   }
 
   /** Prefer the rendered message body to avoid picking up surrounding UI text. */

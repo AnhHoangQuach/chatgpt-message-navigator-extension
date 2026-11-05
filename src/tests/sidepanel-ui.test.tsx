@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Highlighted } from '../sidepanel/components/Highlighted';
 import { splitTitle, type ListRow } from '../sidepanel/components/MessageItem';
@@ -12,17 +12,11 @@ const cache = new SearchIndexCache();
 function row(i: number, text: string, extra: Partial<ChatMessage> = {}): ListRow {
   const message: ChatMessage = {
     id: `m${i}`,
-    idSource: 'message-id',
     conversationId: 'c',
     role: i % 2 ? 'assistant' : 'user',
     index: i,
     turnNumber: null,
-    preview: text,
     text,
-    truncated: false,
-    hasCode: false,
-    hasTable: false,
-    headings: [],
     mounted: true,
     streaming: false,
     revision: 1,
@@ -61,7 +55,7 @@ describe('MessageList', () => {
   function setup(selectedKey: string | null = null) {
     const rows = [
       row(0, 'What is Redis?'),
-      row(1, 'Redis is an in-memory store. It is often used as a cache.', { hasCode: true }),
+      row(1, 'Redis is an in-memory store. It is often used as a cache.'),
       row(2, 'Thanks', { mounted: false }),
     ];
     const onSelect = vi.fn();

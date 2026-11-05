@@ -28,8 +28,8 @@ class FakeArea implements KeyValueArea {
 describe('BookmarkStore', () => {
   it('persists bookmarks across store instances (page refresh / browser restart)', async () => {
     const area = new FakeArea();
-    await new BookmarkStore(area).add(makeBookmark('conv1', 'm1', 'user', 'What is Redis?', 1000));
-    await new BookmarkStore(area).add(makeBookmark('conv2', 'm9', 'assistant', 'Answer', 2000));
+    await new BookmarkStore(area).toggle(makeBookmark('conv1', 'm1', 'user', 'What is Redis?', 1000));
+    await new BookmarkStore(area).toggle(makeBookmark('conv2', 'm9', 'assistant', 'Answer', 2000));
 
     const reloaded = await new BookmarkStore(area).load();
     expect(Object.keys(reloaded).sort()).toEqual([bookmarkKey('conv1', 'm1'), bookmarkKey('conv2', 'm9')]);
@@ -48,14 +48,14 @@ describe('BookmarkStore', () => {
     const b = makeBookmark('c', 'm', 'user', 'x');
     expect(Object.keys(await store.toggle(b))).toHaveLength(1);
     expect(Object.keys(await store.toggle(b))).toHaveLength(0);
-    await store.add(b);
+    await store.toggle(b);
     expect(Object.keys(await store.remove('c', 'm'))).toHaveLength(0);
   });
 
   it('serialises rapid concurrent updates so none are lost', async () => {
     const area = new FakeArea();
     const store = new BookmarkStore(area);
-    await Promise.all(Array.from({ length: 20 }, (_, i) => store.add(makeBookmark('c', `m${i}`, 'user', `p${i}`))));
+    await Promise.all(Array.from({ length: 20 }, (_, i) => store.toggle(makeBookmark('c', `m${i}`, 'user', `p${i}`))));
     expect(Object.keys(await store.load())).toHaveLength(20);
     expect(area.writes).toBe(20);
   });

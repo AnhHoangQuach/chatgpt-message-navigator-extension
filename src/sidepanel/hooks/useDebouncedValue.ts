@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'preact/hooks';
 
 /** Returns `value` after it stopped changing for `delay` ms (empty values pass through immediately). */
 export function useDebouncedValue<T>(value: T, delay: number, immediate?: (v: T) => boolean): T {

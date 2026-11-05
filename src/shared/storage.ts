@@ -77,10 +77,6 @@ export class BookmarkStore {
     return run;
   }
 
-  add(bookmark: Bookmark): Promise<BookmarkMap> {
-    return this.mutate((map) => ({ ...map, [bookmarkKey(bookmark.conversationId, bookmark.messageId)]: bookmark }));
-  }
-
   remove(conversationId: string, messageId: string): Promise<BookmarkMap> {
     return this.mutate((map) => {
       const next = { ...map };

@@ -1,8 +1,9 @@
-import { EyeOff, LoaderCircle, MessageCircle, MoreHorizontal, Sparkles, Star } from 'lucide-react';
-import { memo, useMemo } from 'react';
+import { EyeOff, LoaderCircle, MessageCircle, MoreHorizontal, Sparkles, Star } from 'lucide-preact';
+import { useMemo } from 'preact/hooks';
 import { buildSnippet, findHighlightRanges, type PreparedQuery, type Range, type SearchableMessage } from '../../shared/search';
 import type { Bookmark as StoredBookmark } from '../../shared/types';
 import { cn } from '../lib/cn';
+import { memo } from '../lib/memo';
 import { Highlighted } from './Highlighted';
 
 export type ListRow =
@@ -26,7 +27,7 @@ interface Props {
   onMenu(row: ListRow, anchor: DOMRect): void;
 }
 
-export const ROLE_NAME = { user: 'You', assistant: 'ChatGPT' } as const;
+const ROLE_NAME = { user: 'You', assistant: 'ChatGPT' } as const;
 const ROLE_FALLBACK = { user: 'Your prompt', assistant: 'ChatGPT response' } as const;
 
 /** Card title: the first sentence (or ~90 characters) of the message; the rest becomes the preview. */
@@ -47,7 +48,7 @@ interface CardText {
   previewRanges: Range[];
 }
 
-function cardText(source: string, query: PreparedQuery, snippet: () => { text: string; ranges: Range[] }): CardText {
+function cardText(source: string, query: PreparedQuery): CardText {
   const { title, rest } = splitTitle(source.slice(0, 600));
   const titleRanges = findHighlightRanges(title, query);
   const restHead = rest.slice(0, 300);
@@ -56,7 +57,7 @@ function cardText(source: string, query: PreparedQuery, snippet: () => { text: s
     return { title, titleRanges, preview: restHead, previewRanges: restRanges };
   }
   // The match is further into the message: show the text around it instead.
-  const s = snippet();
+  const s = buildSnippet(source, query);
   return { title, titleRanges, preview: s.text, previewRanges: s.ranges };
 }
 
@@ -83,11 +84,8 @@ function MessageItemImpl({
   const unmounted = message !== null && !message.mounted;
   const dim = unmounted || missing;
 
-  const text = useMemo(() => {
-    if (message) return cardText(message.text, query, () => buildSnippet(message, query));
-    const preview = row.kind === 'missing-bookmark' ? row.bookmark.preview : '';
-    return cardText(preview, query, () => ({ text: preview, ranges: findHighlightRanges(preview, query) }));
-  }, [message, row, query]);
+  const source = row.kind === 'message' ? row.message.text : row.bookmark.preview;
+  const text = useMemo(() => cardText(source, query), [source, query]);
 
   const label =
     row.kind === 'message'

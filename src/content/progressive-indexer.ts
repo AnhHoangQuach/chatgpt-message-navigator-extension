@@ -19,7 +19,7 @@ import type { ProgressiveIndexState } from '../shared/types';
  * key, pointer, touch) cancels the run immediately.
  */
 
-export interface ProgressiveHooks {
+interface ProgressiveHooks {
   getContainer(): HTMLElement | null;
   /** Synchronous rescan; returns the number of indexed messages afterwards. */
   scanNow(): number;
@@ -56,10 +56,10 @@ export class ProgressiveIndexer {
   }
 
   async run(): Promise<ProgressiveIndexState> {
-    if (this.running) return this.state(0, 0, false, 'Already indexing…');
+    if (this.running) return this.state(0, false, 'Already indexing…');
     const container = this.hooks.getContainer();
     if (!container) {
-      const s = this.state(0, 0, false, 'Could not find the conversation scroll area. Nothing to index.');
+      const s = this.state(0, false, 'Could not find the conversation scroll area. Nothing to index.');
       this.hooks.onState(s);
       return s;
     }
@@ -82,7 +82,7 @@ export class ProgressiveIndexer {
     const settle = () => (this.hooks.settle ? this.hooks.settle() : this.hooks.wait(STEP_SETTLE_MS));
     const progress = (count: number) => {
       this.hooks.onState(
-        this.state(step, count - startCount, reachedTop, `Indexing the conversation… ${count} message${count === 1 ? '' : 's'}`, true),
+        this.state(count - startCount, reachedTop, `Indexing the conversation… ${count} message${count === 1 ? '' : 's'}`, true),
       );
     };
 
@@ -138,7 +138,7 @@ export class ProgressiveIndexer {
             ? `Done. Indexed the whole conversation (${n} more message${n === 1 ? '' : 's'}).`
             : 'Done. The whole conversation is indexed.'
           : `Stopped after ${step} steps. ${found}.`;
-      final = this.state(step, discovered, reachedTop, message);
+      final = this.state(discovered, reachedTop, message);
       this.running = false;
       this.cancelled = false;
       this.hooks.onState(final);
@@ -146,7 +146,7 @@ export class ProgressiveIndexer {
     return final;
   }
 
-  private state(step: number, discovered: number, reachedTop: boolean, message: string, running = false): ProgressiveIndexState {
-    return { running, step, discovered: Math.max(0, discovered), reachedTop, message };
+  private state(discovered: number, reachedTop: boolean, message: string, running = false): ProgressiveIndexState {
+    return { running, discovered: Math.max(0, discovered), reachedTop, message };
   }
 }

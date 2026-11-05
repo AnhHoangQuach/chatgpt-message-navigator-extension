@@ -94,22 +94,26 @@ export class SearchIndexCache {
   }
 }
 
-export function matchesQuery(message: SearchableMessage, query: PreparedQuery): boolean {
-  if (query.empty) return true;
-  const haystack = query.fold ? message.foldedText : message.searchText;
-  for (const term of query.terms) if (!haystack.includes(term)) return false;
-  return true;
+function containsTerms(haystack: string, query: PreparedQuery): boolean {
+  return query.terms.every((term) => haystack.includes(term));
 }
 
-export function matchesFilters(
+/** Match arbitrary text (e.g. a stored bookmark preview) without a precomputed index. */
+export function matchesText(text: string, query: PreparedQuery): boolean {
+  return query.empty || containsTerms(toSearchString(text, query.fold), query);
+}
+
+function matchesQuery(message: SearchableMessage, query: PreparedQuery): boolean {
+  return query.empty || containsTerms(query.fold ? message.foldedText : message.searchText, query);
+}
+
+function matchesFilters(
   message: ChatMessage,
   filters: FilterState,
   bookmarkedIds: ReadonlySet<string>,
 ): boolean {
-  if (filters.role === 'user' && message.role !== 'user') return false;
-  if (filters.role === 'assistant' && message.role !== 'assistant') return false;
-  if (filters.role === 'bookmarks' && !bookmarkedIds.has(message.id)) return false;
-  return true;
+  if (filters.role === 'bookmarks') return bookmarkedIds.has(message.id);
+  return filters.role === 'all' || message.role === filters.role;
 }
 
 export function filterMessages(
@@ -163,7 +167,7 @@ export function findHighlightRanges(text: string, query: PreparedQuery, limit = 
   return mergeRanges(ranges);
 }
 
-export function mergeRanges(ranges: Range[]): Range[] {
+function mergeRanges(ranges: Range[]): Range[] {
   if (ranges.length <= 1) return ranges;
   const sorted = [...ranges].sort((a, b) => a.start - b.start);
   const out: Range[] = [{ ...sorted[0]! }];
@@ -176,33 +180,32 @@ export function mergeRanges(ranges: Range[]): Range[] {
   return out;
 }
 
-export interface Snippet {
+interface Snippet {
   text: string;
   ranges: Range[];
 }
 
 /**
- * Text to show for a row: the preview, or (when the first match lies beyond the
- * preview) a window around the first match, with highlight ranges relative to
- * the returned text.
+ * Text to show for a row: its start, or (when the first match lies further in)
+ * a window around the first match, with highlight ranges relative to the
+ * returned text.
  */
-export function buildSnippet(message: ChatMessage, query: PreparedQuery, maxLength = 240): Snippet {
-  if (query.empty) return { text: message.preview, ranges: [] };
-  const all = findHighlightRanges(message.text, query);
+export function buildSnippet(source: string, query: PreparedQuery, maxLength = 240): Snippet {
+  const all = findHighlightRanges(source, query);
   const first = all[0];
   if (!first || first.end <= maxLength - 20) {
-    const text = message.text.length > maxLength ? message.text.slice(0, maxLength) + '…' : message.text;
+    const text = source.length > maxLength ? source.slice(0, maxLength) + '…' : source;
     return { text, ranges: all.filter((r) => r.end <= maxLength) };
   }
   const lead = 60;
   let start = Math.max(0, first.start - lead);
   // Avoid cutting a word in half.
-  const space = message.text.lastIndexOf(' ', start);
+  const space = source.lastIndexOf(' ', start);
   if (space > 0 && start - space < 15) start = space + 1;
-  const end = Math.min(message.text.length, start + maxLength);
+  const end = Math.min(source.length, start + maxLength);
   const prefix = start > 0 ? '…' : '';
-  const suffix = end < message.text.length ? '…' : '';
-  const text = prefix + message.text.slice(start, end) + suffix;
+  const suffix = end < source.length ? '…' : '';
+  const text = prefix + source.slice(start, end) + suffix;
   const ranges = all
     .filter((r) => r.start >= start && r.end <= end)
     .map((r) => ({ start: r.start - start + prefix.length, end: r.end - start + prefix.length }));

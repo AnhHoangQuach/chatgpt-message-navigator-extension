@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 import {
   BOOKMARKS_KEY,
   BookmarkStore,

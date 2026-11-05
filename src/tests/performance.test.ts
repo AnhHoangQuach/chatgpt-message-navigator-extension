@@ -42,8 +42,6 @@ describe('performance with 1,000 synthetic messages', () => {
     const initial = performance.now() - t0;
     expect(messages()).toHaveLength(1000);
     expect(new Set(messages().map((m) => m.id)).size).toBe(1000);
-    expect(messages().filter((m) => m.hasCode).length).toBeGreaterThan(50);
-    expect(messages().filter((m) => m.hasTable).length).toBeGreaterThan(20);
 
     // A rescan with nothing dirty reuses cached extraction.
     const t1 = performance.now();
@@ -51,7 +49,7 @@ describe('performance with 1,000 synthetic messages', () => {
     const rescan = performance.now() - t1;
 
     // Streaming into the last message only re-extracts that message.
-    const extract = vi.spyOn(controller!.adapter, 'extractContent');
+    const extract = vi.spyOn(controller!.adapter, 'extractText');
     vi.useFakeTimers();
     thread.lastElementChild!.querySelector('.markdown')!.appendChild(document.createElement('p')).textContent = 'more';
     await Promise.resolve();
@@ -69,17 +67,11 @@ describe('performance with 1,000 synthetic messages', () => {
       const text = `Message ${i} about topic-${i} with caching, queues and tiếng Việt có dấu. `.repeat(i % 10 === 1 ? 200 : 3);
       return {
         id: `m${i}`,
-        idSource: 'message-id',
         conversationId: 'c',
         role: i % 2 ? 'assistant' : 'user',
         index: i,
         turnNumber: i + 1,
-        preview: text.slice(0, 280),
         text,
-        truncated: false,
-        hasCode: i % 7 === 0,
-        hasTable: false,
-        headings: [],
         mounted: true,
         streaming: false,
         revision: 1,

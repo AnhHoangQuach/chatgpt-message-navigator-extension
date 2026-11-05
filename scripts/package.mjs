@@ -1,4 +1,4 @@
-// Packages dist/ into release/chat-navigator-<version>.zip for the Chrome Web Store.
+// Packages dist/ into release/ai-chat-navigator-<version>.zip for the Chrome Web Store.
 //
 //   pnpm package        (builds first)
 //
@@ -12,8 +12,22 @@ import { crc32, deflateRawSync } from 'node:zlib';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
 const manifest = JSON.parse(readFileSync(join(dist, 'manifest.json'), 'utf8'));
+
+// Chrome Web Store rejects uploads over the hard limits; short_name over 12 is only truncated.
+const overLimit = (limits) =>
+  Object.entries(limits)
+    .filter(([field, max]) => typeof manifest[field] === 'string' && [...manifest[field]].length > max)
+    .map(([field, max]) => `  ${field}: ${[...manifest[field]].length} chars (max ${max})`);
+const errors = overLimit({ name: 75, description: 132 });
+if (errors.length) {
+  console.error(`[cmn] manifest.json exceeds Chrome Web Store limits:\n${errors.join('\n')}`);
+  process.exit(1);
+}
+const warnings = overLimit({ short_name: 12 });
+if (warnings.length) console.warn(`[cmn] warning, may be truncated by Chrome:\n${warnings.join('\n')}`);
+
 const outDir = join(root, 'release');
-const outFile = join(outDir, `chat-navigator-${manifest.version}.zip`);
+const outFile = join(outDir, `ai-chat-navigator-${manifest.version}.zip`);
 
 function walk(dir) {
   return readdirSync(dir)

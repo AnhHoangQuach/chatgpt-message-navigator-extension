@@ -4,17 +4,11 @@ import type { ChatMessage } from '../shared/types';
 
 const m = (id: string, index: number, text = id): ChatMessage => ({
   id,
-  idSource: 'message-id',
   conversationId: 'c',
   role: 'user',
   index,
   turnNumber: null,
-  preview: text,
   text,
-  truncated: false,
-  hasCode: false,
-  hasTable: false,
-  headings: [],
   mounted: true,
   streaming: false,
   revision: 1,

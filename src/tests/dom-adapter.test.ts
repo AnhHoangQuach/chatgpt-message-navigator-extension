@@ -25,7 +25,7 @@ describe('ChatGPTDomAdapter.collectMessages', () => {
       ['user', 'u2', 3],
       ['assistant', 'a2', 4],
     ]);
-    const texts = groups.map((g) => adapter.extractContent(g).text);
+    const texts = groups.map((g) => adapter.extractText(g));
     expect(texts).toEqual(['What is Redis?', 'Redis is an in-memory data store.', 'Explain Redis Transactions', 'MULTI, EXEC, WATCH…']);
   });
 
@@ -39,38 +39,21 @@ describe('ChatGPTDomAdapter.collectMessages', () => {
     ]);
     const adapter = new ChatGPTDomAdapter();
     const [group] = adapter.collectMessages().groups;
-    const content = adapter.extractContent(group!);
-    expect(content.text).toBe('python print(1)');
-    expect(content.text).not.toMatch(/Copy|ChatGPT said|draft/);
-  });
-
-  it('detects code blocks, tables and headings (ignoring sr-only headings)', () => {
-    mountChatGPT([
-      { role: 'user', id: 'u1', html: 'plain' },
-      {
-        role: 'assistant',
-        id: 'a1',
-        html: '<h2>Setup</h2><p>x</p><pre><code>npm i</code></pre><h3>Usage</h3><table><tr><td>1</td></tr></table>',
-      },
-    ]);
-    const adapter = new ChatGPTDomAdapter();
-    const [user, assistant] = adapter.collectMessages().groups.map((g) => adapter.extractContent(g));
-    expect(user).toMatchObject({ hasCode: false, hasTable: false, headings: [] });
-    expect(assistant).toMatchObject({ hasCode: true, hasTable: true, headings: ['Setup', 'Usage'] });
+    const text = adapter.extractText(group!);
+    expect(text).toBe('python print(1)');
+    expect(text).not.toMatch(/Copy|ChatGPT said|draft/);
   });
 
   it('inserts spaces between block elements but not inside inline elements', () => {
     const el = document.createElement('div');
     el.innerHTML = '<p>Hello <b>wor</b>ld</p><p>Second</p><ul><li>a</li><li>b</li></ul>';
-    expect(extractPlainText(el).text).toBe('Hello world Second a b');
+    expect(extractPlainText(el)).toBe('Hello world Second a b');
   });
 
-  it('caps very long messages and flags them as truncated', () => {
+  it('caps very long messages', () => {
     const el = document.createElement('div');
     el.innerHTML = `<p>${'x'.repeat(MAX_TEXT_LENGTH + 500)}</p>`;
-    const r = extractPlainText(el);
-    expect(r.text.length).toBe(MAX_TEXT_LENGTH);
-    expect(r.truncated).toBe(true);
+    expect(extractPlainText(el)).toHaveLength(MAX_TEXT_LENGTH);
   });
 
   it('merges consecutive same-role elements of one turn into a single message', () => {
@@ -84,7 +67,7 @@ describe('ChatGPTDomAdapter.collectMessages', () => {
     const { groups } = adapter.collectMessages();
     expect(groups).toHaveLength(2);
     expect(groups[1]!.messageId).toBe('a1');
-    expect(adapter.extractContent(groups[1]!).text).toBe('Part one Part two');
+    expect(adapter.extractText(groups[1]!)).toBe('Part one Part two');
   });
 
   it('skips system/tool roles and nested role markers', () => {

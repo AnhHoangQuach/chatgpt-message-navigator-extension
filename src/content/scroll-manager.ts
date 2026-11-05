@@ -10,7 +10,7 @@ const HIGHLIGHT_MS = 1800;
 /** Space left above tall messages so ChatGPT's sticky header doesn't cover them. */
 const TOP_OFFSET = 72;
 
-export interface ScrollEnvironment {
+interface ScrollEnvironment {
   win: Window;
 }
 

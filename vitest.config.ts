@@ -1,8 +1,7 @@
-import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+// JSX compiles to Preact via tsconfig.json ("jsxImportSource": "preact").
 export default defineConfig({
-  plugins: [react()],
   test: {
     environment: 'jsdom',
     environmentOptions: { jsdom: { url: 'https://chatgpt.com/' } },

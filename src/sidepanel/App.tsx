@@ -1,7 +1,8 @@
-import { EyeOff } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { EyeOff } from 'lucide-preact';
+import type { ComponentChildren } from 'preact';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { RuntimeMessage } from '../shared/messages';
-import { filterMessages, prepareQuery, SearchIndexCache, toSearchString, type PreparedQuery } from '../shared/search';
+import { filterMessages, matchesText, prepareQuery, SearchIndexCache } from '../shared/search';
 import type { FilterState } from '../shared/types';
 import { FilterBar } from './components/FilterBar';
 import type { ListRow } from './components/MessageItem';
@@ -17,12 +18,6 @@ import { cn } from './lib/cn';
 const DEFAULT_FILTERS: FilterState = { role: 'all' };
 const CHATGPT_HOME = 'https://chatgpt.com/';
 const isBlank = (s: string) => s.trim() === '';
-
-function previewMatches(text: string, query: PreparedQuery): boolean {
-  if (query.empty) return true;
-  const hay = toSearchString(text, query.fold);
-  return query.terms.every((t) => hay.includes(t));
-}
 
 function rowText(row: ListRow): string {
   return row.kind === 'message' ? row.message.text : row.bookmark.preview;
@@ -49,6 +44,9 @@ export function App() {
   const showBanner = useCallback((tone: BannerData['tone'], text: string) => {
     setBanner({ id: ++bannerSeq.current, tone, text });
   }, []);
+
+  // The panel opens with the search field focused.
+  useEffect(() => searchRef.current?.focus(), []);
 
   // New conversation: forget per-conversation UI state.
   const conversationKey = state.conversation?.key ?? null;
@@ -92,7 +90,7 @@ export function App() {
     if (filters.role === 'bookmarks') {
       const known = new Set(state.messages.map((m) => m.id));
       for (const b of bookmarks.list) {
-        if (!known.has(b.messageId) && previewMatches(b.preview, prepared)) {
+        if (!known.has(b.messageId) && matchesText(b.preview, prepared)) {
           out.push({ kind: 'missing-bookmark', key: `bm:${b.messageId}`, bookmark: b });
         }
       }
@@ -291,12 +289,12 @@ export function App() {
             ? 'ChatGPT responses'
             : 'Messages';
 
-  let body: React.ReactNode;
+  let body: ComponentChildren;
   if (state.status === 'not-chatgpt') {
     body = (
       <EmptyState
         title="Open a ChatGPT conversation"
-        body="Chat Navigator works on chatgpt.com. Switch to a ChatGPT tab to list its messages."
+        body="AI Chat Navigator works on chatgpt.com. Switch to a ChatGPT tab to list its messages."
         action={{ label: 'Open ChatGPT', onClick: () => void chrome.tabs.create({ url: CHATGPT_HOME }) }}
       />
     );
@@ -339,7 +337,7 @@ export function App() {
   } else {
     body = (
       <MessageList
-        ref={listRef}
+        handleRef={listRef}
         rows={rows}
         query={prepared}
         selectedKey={selectedKey}
@@ -367,7 +365,7 @@ export function App() {
           draggable={false}
         />
         <div className="min-w-0 flex-1">
-          <h1 className="text-[16px] leading-5 font-bold tracking-[-0.01em]">Chat Navigator</h1>
+          <h1 className="truncate text-[16px] leading-5 font-bold tracking-[-0.01em]">AI Chat Navigator</h1>
           <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] text-muted" title={state.conversation?.title || undefined}>
             <span
               aria-hidden="true"
@@ -393,7 +391,7 @@ export function App() {
 
       <div className="flex flex-col gap-3 px-4 pt-4 pb-1">
         <SearchBar
-          ref={searchRef}
+          inputRef={searchRef}
           value={rawQuery}
           onChange={setRawQuery}
           onClear={clearSearch}

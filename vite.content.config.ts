@@ -5,9 +5,6 @@ import { defineConfig } from 'vite';
 /** Content script: single self-contained IIFE file (no imports at runtime). */
 export default defineConfig({
   publicDir: false,
-  define: {
-    'process.env.NODE_ENV': JSON.stringify('production'),
-  },
   build: {
     outDir: 'dist',
     emptyOutDir: false,

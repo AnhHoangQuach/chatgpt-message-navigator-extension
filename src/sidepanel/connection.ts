@@ -8,9 +8,9 @@ import {
 import type { ChatMessage, ConversationInfo, Diagnostics, ProgressiveIndexState } from '../shared/types';
 import { applyPatch, fromSnapshot, isChatGPTUrl } from './index-state';
 
-export type ConnectionStatus = 'connecting' | 'ready' | 'not-chatgpt' | 'unavailable';
+type ConnectionStatus = 'connecting' | 'ready' | 'not-chatgpt' | 'unavailable';
 
-export interface ScrollResult {
+interface ScrollResult {
   requestId: number;
   messageId: string;
   ok: boolean;
@@ -60,7 +60,7 @@ const MAX_RECONNECTS = 5;
 /**
  * Connects the side panel to the content script of the active ChatGPT tab in
  * this window, follows tab switches/navigation, and exposes the latest index
- * state to React through a subscribe/getState store interface.
+ * state to the UI through a subscribe/getState store interface.
  */
 export class PanelConnection {
   private state: PanelState = initialState();
@@ -97,7 +97,7 @@ export class PanelConnection {
     for (const l of this.listeners) l();
   }
 
-  /** Safe to call again after dispose() (React StrictMode remounts effects). */
+  /** Safe to call again after dispose(). */
   async start(): Promise<void> {
     const generation = ++this.generation;
     this.disposed = false;
@@ -159,7 +159,7 @@ export class PanelConnection {
   indexMore(): void {
     if (!this.send({ type: 'INDEX_MORE' })) return;
     if (this.state.indexMore?.running) return;
-    const starting: ProgressiveIndexState = { running: true, step: 0, discovered: 0, reachedTop: false, message: 'Starting to index…' };
+    const starting: ProgressiveIndexState = { running: true, discovered: 0, reachedTop: false, message: 'Starting to index…' };
     this.setState({ indexMore: starting });
     // No progress report at all (e.g. an outdated content script): don't spin forever.
     setTimeout(() => {

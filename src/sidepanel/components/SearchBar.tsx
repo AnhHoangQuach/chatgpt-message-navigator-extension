@@ -1,7 +1,8 @@
-import { Search, X } from 'lucide-react';
-import { forwardRef } from 'react';
+import { Search, X } from 'lucide-preact';
+import type { Ref } from 'preact';
 
 interface Props {
+  inputRef: Ref<HTMLInputElement>;
   value: string;
   onChange(value: string): void;
   onClear(): void;
@@ -11,24 +12,20 @@ interface Props {
   total: number;
 }
 
-export const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
-  { value, onChange, onClear, onNavigateList, resultCount, total },
-  ref,
-) {
+export function SearchBar({ inputRef, value, onChange, onClear, onNavigateList, resultCount, total }: Props) {
   return (
     <div className="relative flex items-center">
       <Search size={17} className="pointer-events-none absolute left-3.5 text-muted" />
       <input
-        ref={ref}
+        ref={inputRef}
         className="h-11 w-full rounded-xl border border-line bg-bg pr-24 pl-10 text-[13.5px] text-fg shadow-card placeholder:text-muted focus:border-focus focus:outline-none max-[320px]:pr-10"
         type="search"
         placeholder="Search messages…"
         aria-label="Search messages"
-        autoFocus
-        spellCheck={false}
-        autoComplete="off"
+        spellcheck={false}
+        autocomplete="off"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onInput={(e) => onChange(e.currentTarget.value)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -64,4 +61,4 @@ export const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
       </div>
     </div>
   );
-});
+}

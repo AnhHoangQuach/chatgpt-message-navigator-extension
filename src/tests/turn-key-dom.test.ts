@@ -27,11 +27,8 @@ describe('turn-key markup (ChatGPT, November 2026)', () => {
     mountTurnKeyChatGPT([{ key: 'k1', user: 'Show code', assistant: `<p>Here:</p>${CODE_BLOCK}${DIL_TABLE}` }]);
     const adapter = new ChatGPTDomAdapter();
     const [user, assistant] = adapter.collectMessages().groups;
-    expect(adapter.extractContent(user!).text).toBe('Show code');
-    const content = adapter.extractContent(assistant!);
-    expect(content.text).toBe('Here: const x = 1; Col A Value 1');
-    expect(content.hasCode).toBe(true);
-    expect(content.hasTable).toBe(true);
+    expect(adapter.extractText(user!)).toBe('Show code');
+    expect(adapter.extractText(assistant!)).toBe('Here: const x = 1; Col A Value 1');
   });
 
   it('handles a turn whose response has not started yet', () => {

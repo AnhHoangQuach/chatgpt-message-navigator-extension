@@ -1,18 +1,16 @@
 import type { ChatMessage, ConversationInfo, MessageRole } from '../shared/types';
-import { PREVIEW_LENGTH, type ExtractedContent } from './chatgpt-dom-adapter';
 
 /** A message as found in one DOM scan. */
 export interface ScannedMessage {
   id: string;
-  idSource: ChatMessage['idSource'];
   role: MessageRole;
   turnNumber: number | null;
-  content: ExtractedContent;
+  text: string;
   streaming: boolean;
   element: Element;
 }
 
-export interface ScanContext {
+interface ScanContext {
   /** The scroll container is at its top: nothing unmounted can exist above. */
   atTop?: boolean;
   /** The scroll container is at its bottom: nothing unmounted can exist below. */
@@ -30,13 +28,9 @@ export interface IndexState {
   messages: Omit<ChatMessage, 'index'>[];
 }
 
-export interface IndexPatch {
+interface IndexPatch {
   order: string[];
   upserts: ChatMessage[];
-}
-
-function makePreview(text: string): string {
-  return text.length > PREVIEW_LENGTH ? text.slice(0, PREVIEW_LENGTH).trimEnd() + '…' : text;
 }
 
 function sameStrings(a: readonly string[], b: readonly string[]): boolean {
@@ -151,25 +145,15 @@ export class MessageIndexer {
     const conversationId = this.conversation.conversationId ?? this.conversation.key;
     for (const s of unique) {
       const existing = this.records.get(s.id);
-      // While a user edits a prompt, its text is in a <textarea> we skip;
-      // keep the last known text instead of indexing an empty message.
-      const content =
-        existing && s.content.text === '' && existing.message.text !== '' ? null : s.content;
       if (!existing) {
         this.records.set(s.id, {
           element: s.element,
           message: {
             id: s.id,
-            idSource: s.idSource,
             conversationId,
             role: s.role,
             turnNumber: s.turnNumber,
-            preview: makePreview(s.content.text),
-            text: s.content.text,
-            truncated: s.content.truncated,
-            hasCode: s.content.hasCode,
-            hasTable: s.content.hasTable,
-            headings: s.content.headings,
+            text: s.text,
             mounted: true,
             streaming: s.streaming,
             revision: 1,
@@ -180,32 +164,19 @@ export class MessageIndexer {
       }
       existing.element = s.element;
       const m = existing.message;
-      const contentChanged =
-        content !== null &&
-        (m.text !== content.text ||
-          m.hasCode !== content.hasCode ||
-          m.hasTable !== content.hasTable ||
-          m.truncated !== content.truncated ||
-          !sameStrings(m.headings, content.headings));
+      // While a user edits a prompt, its text is in a <textarea> we skip;
+      // keep the last known text instead of indexing an empty message.
+      const textChanged = m.text !== s.text && s.text !== '';
       const metaChanged =
         !m.mounted || m.streaming !== s.streaming || m.role !== s.role || m.turnNumber !== s.turnNumber;
-      if (contentChanged || metaChanged) {
+      if (textChanged || metaChanged) {
         existing.message = {
           ...m,
           role: s.role,
           turnNumber: s.turnNumber,
           mounted: true,
           streaming: s.streaming,
-          ...(contentChanged && content
-            ? {
-                text: content.text,
-                preview: makePreview(content.text),
-                truncated: content.truncated,
-                hasCode: content.hasCode,
-                hasTable: content.hasTable,
-                headings: content.headings,
-              }
-            : {}),
+          text: textChanged ? s.text : m.text,
           revision: m.revision + 1,
         };
         this.changed.add(s.id);
@@ -307,12 +278,6 @@ export class MessageIndexer {
   getElement(id: string): Element | null {
     const el = this.records.get(id)?.element ?? null;
     return el && el.isConnected ? el : null;
-  }
-
-  getMessage(id: string): ChatMessage | null {
-    const record = this.records.get(id);
-    if (!record) return null;
-    return { ...record.message, index: this.order.indexOf(id) };
   }
 
   has(id: string): boolean {
