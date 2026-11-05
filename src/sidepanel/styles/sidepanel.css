@@ -1,0 +1,128 @@
+/* Tailwind v4 is compiled at build time into a static stylesheet: nothing is
+   loaded remotely. Only the side panel sources are scanned for class names. */
+@import 'tailwindcss' source(none);
+@source '../';
+
+/* Design tokens. Raw values live on :root so dark mode can swap them; the
+   @theme block exposes them as Tailwind colours (bg-surface, text-muted …). */
+:root {
+  --cmn-bg: #ffffff;
+  --cmn-surface: #f7f7f8;
+  --cmn-surface-2: #efeff1;
+  --cmn-border: #e3e3e6;
+  --cmn-fg: #0d0d0d;
+  --cmn-muted: #6e6e76;
+  /* Brand amber from the logo tile. --cmn-accent is for fills only (2.4:1 on
+     white); text and icons use --cmn-accent-strong, the logo's dark brown
+     (≥5.5:1 on every light surface). */
+  --cmn-accent: #d99a25;
+  --cmn-accent-strong: #8a5200;
+  --cmn-accent-soft: rgba(217, 154, 37, 0.16);
+  /* Text/icons on a solid --cmn-accent fill (10:1). */
+  --cmn-accent-ink: #1f1600;
+  --cmn-ok: #16a34a;
+  --cmn-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --cmn-user: #2f6fde;
+  --cmn-user-soft: rgba(47, 111, 222, 0.1);
+  --cmn-mark: #f8d878;
+  --cmn-mark-fg: #1a1a1a;
+  --cmn-warn: #c2410c;
+  --cmn-warn-soft: rgba(234, 88, 12, 0.1);
+  --cmn-error: #c62828;
+  --cmn-error-soft: rgba(198, 40, 40, 0.1);
+  --cmn-focus: #8a5200;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cmn-bg: #171717;
+    --cmn-surface: #1f1f1f;
+    --cmn-surface-2: #2a2a2a;
+    --cmn-border: #2f2f2f;
+    --cmn-fg: #ececec;
+    --cmn-muted: #9b9ba3;
+    --cmn-accent: #d99a25;
+    --cmn-accent-strong: #e0a63a;
+    --cmn-accent-soft: rgba(217, 154, 37, 0.16);
+    --cmn-accent-ink: #1f1600;
+    --cmn-ok: #4ade80;
+    --cmn-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --cmn-user: #7aa7ff;
+    --cmn-user-soft: rgba(122, 167, 255, 0.12);
+    --cmn-mark: #8a6d00;
+    --cmn-mark-fg: #fff7d6;
+    --cmn-warn: #fb923c;
+    --cmn-warn-soft: rgba(251, 146, 60, 0.12);
+    --cmn-error: #ff7070;
+    --cmn-error-soft: rgba(255, 112, 112, 0.12);
+    --cmn-focus: #e0a63a;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--cmn-bg);
+  --color-surface: var(--cmn-surface);
+  --color-surface-2: var(--cmn-surface-2);
+  --color-line: var(--cmn-border);
+  --color-fg: var(--cmn-fg);
+  --color-muted: var(--cmn-muted);
+  --color-accent: var(--cmn-accent);
+  --color-accent-strong: var(--cmn-accent-strong);
+  --color-accent-soft: var(--cmn-accent-soft);
+  --color-accent-ink: var(--cmn-accent-ink);
+  --color-ok: var(--cmn-ok);
+  --shadow-card: var(--cmn-card-shadow);
+  --color-user: var(--cmn-user);
+  --color-user-soft: var(--cmn-user-soft);
+  --color-mark: var(--cmn-mark);
+  --color-mark-fg: var(--cmn-mark-fg);
+  --color-warn: var(--cmn-warn);
+  --color-warn-soft: var(--cmn-warn-soft);
+  --color-error: var(--cmn-error);
+  --color-error-soft: var(--cmn-error-soft);
+  --color-focus: var(--cmn-focus);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-bg font-sans text-[13px] leading-[1.4] text-fg antialiased;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-1 outline-focus;
+  }
+
+  button:not(:disabled) {
+    @apply cursor-pointer;
+  }
+
+  input[type='search']::-webkit-search-cancel-button {
+    display: none;
+  }
+}
+
+@layer components {
+  /* Shared button styles, kept here so every button looks the same. */
+  .btn {
+    @apply inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-bg px-3 text-[13px] whitespace-nowrap shadow-card;
+    @apply hover:enabled:bg-surface-2 disabled:opacity-45;
+  }
+
+  .btn-sm {
+    @apply h-7 px-2.5 text-xs;
+  }
+
+  .icon-btn {
+    @apply inline-grid size-[26px] place-items-center rounded-lg bg-transparent p-0 text-muted;
+    @apply hover:enabled:bg-surface-2 hover:enabled:text-fg disabled:opacity-40;
+  }
+}
