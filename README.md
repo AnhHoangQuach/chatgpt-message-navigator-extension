@@ -266,6 +266,8 @@ The navigator can only index what ChatGPT has **rendered in the tab**. It tracks
 
 ## Privacy and security
 
+Full privacy policy: [PRIVACY.md](PRIVACY.md).
+
 This extension can read private conversations, so it is deliberately minimal:
 
 - **No network access.** No `fetch` or XHR, no analytics, no remote code. The build contains no `eval` / `new Function`, and the extension-page CSP is `script-src 'self'`. Tailwind CSS is compiled at build time into a static stylesheet, and Lucide icons are bundled as inline SVG components, so the panel loads no fonts, styles or icons from the network.
