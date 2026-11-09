@@ -8,6 +8,7 @@ import { FilterBar } from './components/FilterBar';
 import type { ListRow } from './components/MessageItem';
 import { MessageList, type MessageListHandle } from './components/MessageList';
 import { HeaderTools, NavigatorToolbar } from './components/NavigatorToolbar';
+import { SitesList } from './components/SitesList';
 import { SearchBar } from './components/SearchBar';
 import { Banner, DiagnosticsPanel, EmptyState, type BannerData } from './components/StatusViews';
 import { useBookmarks } from './hooks/useBookmarks';
@@ -16,7 +17,6 @@ import { usePanelConnection } from './hooks/usePanelConnection';
 import { cn } from './lib/cn';
 
 const DEFAULT_FILTERS: FilterState = { role: 'all' };
-const CHATGPT_HOME = 'https://chatgpt.com/';
 const isBlank = (s: string) => s.trim() === '';
 
 function rowText(row: ListRow): string {
@@ -190,7 +190,7 @@ export function App() {
     if (r.reason === 'not-mounted') {
       showBanner(
         'warn',
-        `${label} couldn't be brought back into view. ChatGPT may have removed it (edited, deleted or on another branch). Try “Rescan” or “Index more”.`,
+        `${label} couldn't be brought back into view. ${assistantName} may have removed it (edited, deleted or on another branch). Try “Rescan” or “Index more”.`,
       );
     } else {
       showBanner('warn', `${label} can't be found on the page. It may be on another branch of the conversation, or deleted.`);
@@ -260,6 +260,15 @@ export function App() {
   // ---------------------------------------------------------------------------
 
   const ready = state.status === 'ready';
+  const assistantName = state.site?.name ?? 'ChatGPT';
+  const sitesList = (
+    <SitesList
+      enabledSites={state.enabledSites}
+      currentSite={state.site?.id ?? null}
+      onAllow={(site) => connection.allowSite(site)}
+      onOpen={(site) => void chrome.tabs.create({ url: site.home })}
+    />
+  );
   const selectedRow = rows.find((r) => r.key === selectedKey);
   const activeMessage = state.activeId ? state.messages.find((m) => m.id === state.activeId) : undefined;
   const positionMessage = selectedRow?.kind === 'message' ? selectedRow.message : activeMessage;
@@ -268,8 +277,8 @@ export function App() {
 
   const connecting = state.status === 'connecting';
   const statusText =
-    state.status === 'not-chatgpt'
-      ? 'ChatGPT not open'
+    state.status === 'unsupported'
+      ? 'No supported chat in this tab'
       : state.status === 'unavailable'
         ? 'Lost connection to the tab'
         : connecting && !state.loading
@@ -286,28 +295,33 @@ export function App() {
         : filters.role === 'user'
           ? 'Your messages'
           : filters.role === 'assistant'
-            ? 'ChatGPT responses'
+            ? `${assistantName} responses`
             : 'Messages';
 
   let body: ComponentChildren;
-  if (state.status === 'not-chatgpt') {
+  if (state.status === 'unsupported') {
     body = (
-      <EmptyState
-        title="Open a ChatGPT conversation"
-        body="AI Chat Navigator works on chatgpt.com. Switch to a ChatGPT tab to list its messages."
-        action={{ label: 'Open ChatGPT', onClick: () => void chrome.tabs.create({ url: CHATGPT_HOME }) }}
-      />
+      <div data-testid="unsupported" className="flex min-h-0 flex-col gap-3 overflow-y-auto px-4 py-5">
+        <div className="text-center">
+          <p className="text-[14px] font-semibold">Open a supported AI chat</p>
+          <p className="mx-auto mt-1 max-w-[320px] text-[12.5px] text-muted">
+            AI Chat Navigator works on the sites below. Switch to a conversation on one of them and the navigator
+            connects automatically.
+          </p>
+        </div>
+        {sitesList}
+      </div>
     );
   } else if (state.status === 'unavailable') {
     body = (
       <EmptyState
-        title="Can't reach this ChatGPT tab"
-        body="Reload the ChatGPT tab, then try again."
+        title="Can't reach this tab"
+        body={`Reload the ${assistantName} tab, then try again.`}
         action={{ label: 'Retry', onClick: () => connection.retry() }}
       />
     );
   } else if (state.loading) {
-    body = <EmptyState title="Connecting to ChatGPT…" spinner />;
+    body = <EmptyState title={`Connecting to ${assistantName}…`} spinner />;
   } else if (state.messages.length === 0 && rows.length === 0) {
     const warning = state.diagnostics?.warnings[0];
     body = conversationId ? (
@@ -349,6 +363,7 @@ export function App() {
         onToggleBookmark={toggleBookmark}
         onCopy={copyRow}
         pendingId={state.pendingJump?.messageId ?? null}
+        assistantName={assistantName}
       />
     );
   }
@@ -389,6 +404,7 @@ export function App() {
         />
       </header>
 
+      {state.status !== 'unsupported' && (
       <div className="flex flex-col gap-3 px-4 pt-4 pb-1">
         <SearchBar
           inputRef={searchRef}
@@ -408,12 +424,31 @@ export function App() {
             }
           }}
         />
-        <FilterBar filters={filters} onChange={setFilters} counts={counts} />
+        <FilterBar filters={filters} onChange={setFilters} counts={counts} assistantName={assistantName} />
       </div>
+      )}
 
-      {showDiagnostics && state.diagnostics && <DiagnosticsPanel diagnostics={state.diagnostics} onRescan={rescan} rescanning={state.rescanning} />}
+      {showDiagnostics && state.diagnostics && (
+        <>
+          <DiagnosticsPanel
+            diagnostics={state.diagnostics}
+            onRescan={rescan}
+            rescanning={state.rescanning}
+            onCopyStructure={() => {
+              void connection.probe().then((probe) => {
+                if (!probe) return showBanner('error', "Couldn't read the page structure. Reload the tab and try again.");
+                navigator.clipboard.writeText(probe).then(
+                  () => showBanner('info', 'Copied the page structure (no message text).'),
+                  () => showBanner('error', "Couldn't copy. Please try again."),
+                );
+              });
+            }}
+          />
+        </>
+      )}
       {banner && <Banner banner={banner} onDismiss={() => setBanner(null)} />}
 
+      {state.status !== 'unsupported' && (
       <div
         data-testid="stats"
         data-total={counts.all}
@@ -436,6 +471,7 @@ export function App() {
           {position}
         </span>
       </div>
+      )}
 
       <main className="flex min-h-0 flex-1 flex-col">{body}</main>
 

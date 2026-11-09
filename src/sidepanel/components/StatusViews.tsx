@@ -67,10 +67,22 @@ const STRATEGY_LABEL: Record<Diagnostics['strategy'], string> = {
   'author-role': 'author-role (classic markup)',
   'conversation-turn': 'conversation-turn (fallback)',
   'turn-key': 'turn-key (Nov 2026 markup)',
+  selectors: 'site selectors',
   none: 'no messages found',
 };
 
-export function DiagnosticsPanel({ diagnostics, onRescan, rescanning }: { diagnostics: Diagnostics; onRescan(): void; rescanning: boolean }) {
+export function DiagnosticsPanel({
+  diagnostics,
+  onRescan,
+  rescanning,
+  onCopyStructure,
+}: {
+  diagnostics: Diagnostics;
+  onRescan(): void;
+  rescanning: boolean;
+  /** Copies a structure-only snapshot of the page (for fixing a site's selectors). */
+  onCopyStructure?(): void;
+}) {
   const time = diagnostics.lastScanAt ? new Date(diagnostics.lastScanAt).toLocaleTimeString() : '—';
   return (
     <div className="mx-4 mt-3 rounded-xl border border-line bg-surface px-3 pt-2.5 pb-3 text-[12px]">
@@ -94,14 +106,24 @@ export function DiagnosticsPanel({ diagnostics, onRescan, rescanning }: { diagno
         </ul>
       )}
       <p className="mt-1.5 mb-2.5 text-muted">
-        The list contains only messages ChatGPT has rendered in this tab. Messages with the eye-off icon were seen
-        earlier but ChatGPT has unmounted them; click one to bring it back. Scroll up, or use <strong>Index more</strong>,
+        The list contains only messages the site has rendered in this tab. Messages with the eye-off icon were seen
+        earlier but the site has unmounted them; click one to bring it back. Scroll up, or use <strong>Index more</strong>,
         to add older messages.
       </p>
       <button type="button" className="btn btn-sm" onClick={onRescan} disabled={rescanning} aria-busy={rescanning || undefined}>
         {rescanning && <LoaderCircle size={13} className="animate-spin" />}
         {rescanning ? 'Rescanning…' : 'Rescan now'}
       </button>
+      {onCopyStructure && (
+        <button
+          type="button"
+          className="btn btn-sm ml-2"
+          onClick={onCopyStructure}
+          title="Copy the page's structure (tags, classes and attribute names, no message text) to report a site that isn't detected"
+        >
+          Copy page structure
+        </button>
+      )}
     </div>
   );
 }

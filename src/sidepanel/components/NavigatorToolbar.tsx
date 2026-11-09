@@ -38,7 +38,7 @@ export function HeaderTools({ onRescan, onIndexMore, onCancelIndexMore, indexMor
           onClick={onIndexMore}
           disabled={disabled}
           aria-label="Index more"
-          title="Index the whole conversation: scroll up step by step to find messages ChatGPT has not rendered, then return to where you were"
+          title="Index the whole conversation: scroll up step by step to find messages the site has not rendered, then return to where you were"
         >
           <Layers size={17} />
         </button>
@@ -110,7 +110,7 @@ export function NavigatorToolbar({ onPrev, onNext, onBottom, onToggleDetails, di
     <nav aria-label="Navigation" className="flex items-stretch gap-1 border-t border-line bg-bg px-3 pt-1.5 pb-2">
       <NavItem icon={<ChevronUp size={20} />} label="Prev" title="Previous message in the list (Alt+↑)" onClick={onPrev} disabled={disabled} />
       <NavItem icon={<ChevronDown size={20} />} label="Next" title="Next message in the list (Alt+↓)" onClick={onNext} disabled={disabled} />
-      <NavItem icon={<ArrowDownToLine size={19} />} label="Bottom" title="Scroll ChatGPT to the latest message" onClick={onBottom} disabled={disabled} />
+      <NavItem icon={<ArrowDownToLine size={19} />} label="Bottom" title="Scroll the chat to the latest message" onClick={onBottom} disabled={disabled} />
       <NavItem
         icon={
           <span className="relative">

@@ -5,10 +5,12 @@ import {
   type PanelToContent,
   type ScrollFailureReason,
 } from '../shared/messages';
+import { SITES, siteForUrl, type SiteId, type SiteInfo } from '../shared/sites';
 import type { ChatMessage, ConversationInfo, Diagnostics, ProgressiveIndexState } from '../shared/types';
-import { applyPatch, fromSnapshot, isChatGPTUrl } from './index-state';
+import { applyPatch, fromSnapshot } from './index-state';
 
-type ConnectionStatus = 'connecting' | 'ready' | 'not-chatgpt' | 'unavailable';
+/** `unsupported`: the tab isn't a supported chat site (or the user blocked the extension there). */
+type ConnectionStatus = 'connecting' | 'ready' | 'unsupported' | 'unavailable';
 
 interface ScrollResult {
   requestId: number;
@@ -20,6 +22,10 @@ interface ScrollResult {
 export interface PanelState {
   status: ConnectionStatus;
   tabId: number | null;
+  /** The chat site of the current tab (when supported and enabled). */
+  site: SiteInfo | null;
+  /** Sites the extension may run on (all, unless the user restricted its site access in Chrome). */
+  enabledSites: SiteId[];
   conversation: ConversationInfo | null;
   messages: ChatMessage[];
   diagnostics: Diagnostics | null;
@@ -34,9 +40,14 @@ export interface PanelState {
   rescanning: boolean;
 }
 
-const initialState = (): PanelState => ({
+/** All sites are granted at install; refreshEnabledSites() narrows this if the user restricted access. */
+const ALL_SITES: SiteId[] = SITES.map((s) => s.id);
+
+const initialState = (enabledSites: SiteId[] = ALL_SITES): PanelState => ({
   status: 'connecting',
   tabId: null,
+  site: null,
+  enabledSites,
   conversation: null,
   messages: [],
   diagnostics: null,
@@ -58,9 +69,15 @@ const RECONNECT_DELAY_MS = 600;
 const MAX_RECONNECTS = 5;
 
 /**
- * Connects the side panel to the content script of the active ChatGPT tab in
- * this window, follows tab switches/navigation, and exposes the latest index
- * state to the UI through a subscribe/getState store interface.
+ * Connects the side panel to the content script of the active chat tab in
+ * this window (any supported site, see shared/sites.ts), follows tab
+ * switches/navigation, and exposes the latest index state to the UI through a
+ * subscribe/getState store interface.
+ *
+ * The manifest content script runs on every supported site; tabs that were
+ * open before the extension was installed or reloaded get it injected. If the
+ * user restricted the extension's site access, Chrome hides the tab's URL, so
+ * such tabs show the "unsupported" state with an Allow button per site.
  */
 export class PanelConnection {
   private state: PanelState = initialState();
@@ -71,6 +88,7 @@ export class PanelConnection {
   private reconnects = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private requestSeq = 0;
+  private probeWaiters: ((probe: string | null) => void)[] = [];
   private rescanStartedAt = 0;
   private disposed = false;
   private generation = 0;
@@ -106,6 +124,11 @@ export class PanelConnection {
     this.windowId = win.id;
     chrome.tabs.onActivated.addListener(this.onActivated);
     chrome.tabs.onUpdated.addListener(this.onUpdated);
+    chrome.permissions.onAdded.addListener(this.onPermissionsChanged);
+    chrome.permissions.onRemoved.addListener(this.onPermissionsChanged);
+    // Don't delay connecting: detection relies on the tab URL (Chrome hides it
+    // for restricted sites); the granted list only drives the sites list UI.
+    void this.refreshEnabledSites();
     await this.attachToActiveTab();
   }
 
@@ -114,7 +137,46 @@ export class PanelConnection {
     this.disposed = true;
     chrome.tabs.onActivated.removeListener(this.onActivated);
     chrome.tabs.onUpdated.removeListener(this.onUpdated);
+    chrome.permissions.onAdded.removeListener(this.onPermissionsChanged);
+    chrome.permissions.onRemoved.removeListener(this.onPermissionsChanged);
     this.dropPort();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sites
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Ask Chrome to restore access to a site the user restricted. Must run inside
+   * the click handler (Chrome requires a user gesture). The panel re-attaches via onAdded.
+   */
+  allowSite(site: SiteInfo): Promise<boolean> {
+    return chrome.permissions.request({ origins: [...site.origins] }).catch(() => false);
+  }
+
+  private async refreshEnabledSites(): Promise<void> {
+    const granted = new Set((await chrome.permissions.getAll()).origins ?? []);
+    const enabledSites = SITES.filter((s) => s.origins.every((o) => granted.has(o))).map((s) => s.id);
+    this.setState({ enabledSites });
+  }
+
+  private onPermissionsChanged = (): void => {
+    void this.refreshEnabledSites().then(() => {
+      if (this.disposed) return;
+      this.reconnects = 0;
+      void this.attachToActiveTab();
+    });
+  };
+
+  /** The tab's site if it's supported and enabled; null otherwise. */
+  private siteFor(url: string | undefined): SiteInfo | null {
+    const site = siteForUrl(url);
+    return site && this.state.enabledSites.includes(site.id) ? site : null;
+  }
+
+  private unsupported(tabId: number | null): void {
+    this.dropPort();
+    this.setState({ ...initialState(this.state.enabledSites), status: 'unsupported', tabId, loading: false });
   }
 
   // ---------------------------------------------------------------------------
@@ -167,6 +229,19 @@ export class PanelConnection {
     }, JUMP_TIMEOUT_MS);
   }
 
+  /** Structure-only snapshot of the page (no message text), or null if the tab doesn't answer. */
+  probe(): Promise<string | null> {
+    if (!this.send({ type: 'PROBE_DOM' })) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const waiter = (probe: string | null) => resolve(probe);
+      this.probeWaiters.push(waiter);
+      setTimeout(() => {
+        const i = this.probeWaiters.indexOf(waiter);
+        if (i !== -1) this.probeWaiters.splice(i, 1)[0]!(null);
+      }, RESCAN_TIMEOUT_MS);
+    });
+  }
+
   private finishRescan(): void {
     if (!this.state.rescanning) return;
     const started = this.rescanStartedAt;
@@ -204,22 +279,22 @@ export class PanelConnection {
 
   private onUpdated = (tabId: number, change: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab): void => {
     if (tabId !== this.state.tabId || (this.pinnedTabId === null && !tab.active)) return;
-    if (change.url !== undefined && !isChatGPTUrl(change.url)) {
-      this.dropPort();
-      this.setState({ ...initialState(), status: 'not-chatgpt', tabId, loading: false });
+    // A new document is loading: a previous injection doesn't carry over.
+    if (change.status === 'loading') this.injected.delete(tabId);
+    if (change.url !== undefined && !this.siteFor(change.url)) {
+      this.unsupported(tabId);
       return;
     }
-    // Without host permission for other sites tab.url is undefined there.
-    if (change.status === 'complete' && !isChatGPTUrl(tab.url)) {
-      if (this.state.status !== 'not-chatgpt') {
-        this.dropPort();
-        this.setState({ ...initialState(), status: 'not-chatgpt', tabId, loading: false });
-      }
+    // Without host permission for a site tab.url is undefined there.
+    const site = this.siteFor(tab.url);
+    if (change.status === 'complete' && !site) {
+      if (this.state.status !== 'unsupported') this.unsupported(tabId);
       return;
     }
-    // (Re)connect once a ChatGPT page finished loading and we're not connected.
+    // (Re)connect once a supported page finished loading and we're not connected.
     if (change.status === 'complete' && !this.port) {
       this.reconnects = 0;
+      if (site && site.id !== this.state.site?.id) this.setState({ ...initialState(this.state.enabledSites), tabId, site });
       this.connect(tab);
     }
   };
@@ -231,11 +306,12 @@ export class PanelConnection {
         : (await chrome.tabs.query({ active: true, windowId: this.windowId }))[0];
     if (this.disposed) return;
     this.dropPort();
-    if (!tab?.id || !isChatGPTUrl(tab.url)) {
-      this.setState({ ...initialState(), status: 'not-chatgpt', tabId: tab?.id ?? null, loading: false });
+    const site = this.siteFor(tab?.url);
+    if (!tab?.id || !site) {
+      this.unsupported(tab?.id ?? null);
       return;
     }
-    this.setState({ ...initialState(), tabId: tab.id });
+    this.setState({ ...initialState(this.state.enabledSites), tabId: tab.id, site });
     this.connect(tab);
   }
 
@@ -298,12 +374,12 @@ export class PanelConnection {
       try {
         const tab = await chrome.tabs.get(tabId);
         if (this.disposed || this.state.tabId !== tabId) return;
-        if (!isChatGPTUrl(tab.url)) {
-          this.setState({ ...initialState(), status: 'not-chatgpt', tabId, loading: false });
+        if (!this.siteFor(tab.url)) {
+          this.unsupported(tabId);
           return;
         }
-        // While the page is loading the manifest content script will appear;
-        // onUpdated(status: complete) reconnects then.
+        // While the page is loading the content script will appear (or be
+        // injected); onUpdated(status: complete) reconnects then.
         if (tab.status === 'complete') this.connect(tab);
       } catch {
         this.setState({ status: 'unavailable', loading: false });
@@ -361,6 +437,12 @@ export class PanelConnection {
       case 'INDEX_MORE_STATE':
         this.setState({ indexMore: message.state });
         break;
+      case 'PROBE_RESULT': {
+        const waiters = this.probeWaiters;
+        this.probeWaiters = [];
+        for (const w of waiters) w(typeof message.probe === 'string' ? message.probe : null);
+        break;
+      }
     }
   }
 }

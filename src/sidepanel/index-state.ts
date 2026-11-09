@@ -30,13 +30,3 @@ export function applyPatch(
 export function fromSnapshot(messages: readonly ChatMessage[]): ChatMessage[] {
   return applyPatch([], messages.map((m) => m.id), messages);
 }
-
-export function isChatGPTUrl(url: string | undefined): boolean {
-  if (!url) return false;
-  try {
-    const u = new URL(url);
-    return u.protocol === 'https:' && u.hostname === 'chatgpt.com';
-  } catch {
-    return false;
-  }
-}

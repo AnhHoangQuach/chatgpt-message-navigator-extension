@@ -25,10 +25,12 @@ interface Props {
   onClick(row: ListRow): void;
   onToggleBookmark(row: ListRow): void;
   onMenu(row: ListRow, anchor: DOMRect): void;
+  /** The assistant's name on the current site (ChatGPT, Gemini, Claude…). */
+  assistantName?: string;
 }
 
-const ROLE_NAME = { user: 'You', assistant: 'ChatGPT' } as const;
-const ROLE_FALLBACK = { user: 'Your prompt', assistant: 'ChatGPT response' } as const;
+const roleName = (role: 'user' | 'assistant', assistant: string) => (role === 'user' ? 'You' : assistant);
+const roleFallback = (role: 'user' | 'assistant', assistant: string) => (role === 'user' ? 'Your prompt' : `${assistant} response`);
 
 /** Card title: the first sentence (or ~90 characters) of the message; the rest becomes the preview. */
 export function splitTitle(text: string): { title: string; rest: string } {
@@ -77,6 +79,7 @@ function MessageItemImpl({
   onClick,
   onToggleBookmark,
   onMenu,
+  assistantName = 'ChatGPT',
 }: Props) {
   const role = row.kind === 'message' ? row.message.role : row.bookmark.role;
   const message = row.kind === 'message' ? row.message : null;
@@ -89,7 +92,7 @@ function MessageItemImpl({
 
   const label =
     row.kind === 'message'
-      ? `Message ${row.message.index + 1}, ${role === 'user' ? 'you' : 'ChatGPT'}${row.message.mounted ? '' : ', not currently rendered'}`
+      ? `Message ${row.message.index + 1}, ${role === 'user' ? 'you' : assistantName}${row.message.mounted ? '' : ', not currently rendered'}`
       : 'Favorite message, no longer on the page';
 
   return (
@@ -123,12 +126,12 @@ function MessageItemImpl({
             role === 'user' ? 'bg-user-soft text-user' : 'bg-accent-soft text-accent-strong',
             dim && 'opacity-60',
           )}
-          title={ROLE_NAME[role]}
+          title={roleName(role, assistantName)}
         >
           {role === 'user' ? <MessageCircle size={18} /> : <Sparkles size={18} />}
         </span>
         <span data-testid="role" className="sr-only">
-          {ROLE_NAME[role]}
+          {roleName(role, assistantName)}
         </span>
 
         <div data-testid="row-text" className="min-w-0 flex-1">
@@ -136,7 +139,7 @@ function MessageItemImpl({
             {text.title ? <Highlighted text={text.title} ranges={text.titleRanges} /> : <span className="italic">(no text content)</span>}
           </p>
           <p className="truncate text-xs leading-[18px] text-muted">
-            {text.preview ? <Highlighted text={text.preview} ranges={text.previewRanges} /> : ROLE_FALLBACK[role]}
+            {text.preview ? <Highlighted text={text.preview} ranges={text.previewRanges} /> : roleFallback(role, assistantName)}
           </p>
         </div>
 
@@ -152,7 +155,7 @@ function MessageItemImpl({
               </span>
             )}
             {message?.streaming && (
-              <span data-testid="badge-live" className="relative flex size-2" title="ChatGPT is still writing this response">
+              <span data-testid="badge-live" className="relative flex size-2" title={`${assistantName} is still writing this response`}>
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75 motion-reduce:animate-none" />
                 <span className="relative inline-flex size-2 rounded-full bg-accent" />
                 <span className="sr-only">writing</span>

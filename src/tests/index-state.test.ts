@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPatch, fromSnapshot, isChatGPTUrl } from '../sidepanel/index-state';
+import { applyPatch, fromSnapshot } from '../sidepanel/index-state';
 import type { ChatMessage } from '../shared/types';
 
 const m = (id: string, index: number, text = id): ChatMessage => ({
@@ -34,10 +34,4 @@ describe('side panel index state', () => {
     expect(applyPatch(prev, ['a', 'c', 'c'], []).map((x) => x.id)).toEqual(['a', 'c']);
   });
 
-  it('recognises ChatGPT URLs only', () => {
-    expect(isChatGPTUrl('https://chatgpt.com/c/abc')).toBe(true);
-    expect(isChatGPTUrl('https://chatgpt.com.evil.example/')).toBe(false);
-    expect(isChatGPTUrl('http://chatgpt.com/')).toBe(false);
-    expect(isChatGPTUrl(undefined)).toBe(false);
-  });
 });

@@ -2,7 +2,10 @@ import { isPanelToContent, PORT_NAME, type ContentToPanel } from '../shared/mess
 import { NavigatorController, type PanelChannel } from './navigator-controller';
 
 /**
- * Content script entry (runs on https://chatgpt.com/* only).
+ * Content script entry: declared in the manifest for every supported chat site
+ * (see shared/sites.ts), and injected by the side panel into tabs that were
+ * open before the extension was installed. The site adapter is chosen from the
+ * page hostname.
  *
  * Talks exclusively to this extension's side panel over a chrome.runtime Port.
  * It makes no network requests and never reads cookies, storage or

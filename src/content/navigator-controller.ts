@@ -2,7 +2,9 @@ import type { ContentToPanel, PanelToContent } from '../shared/messages';
 import { debounce } from '../shared/timing';
 import type { ConversationInfo, Diagnostics, IndexSnapshot, ProgressiveIndexState } from '../shared/types';
 import { ActiveTracker } from './active-tracker';
-import { ChatGPTDomAdapter, type ChangeSet } from './chatgpt-dom-adapter';
+import { createSiteAdapter } from './adapters';
+import { probeDom } from './dom-probe';
+import type { ChangeSet, SiteAdapter } from './site-adapter';
 import { MessageIndexer, type IndexState, type ScannedMessage } from './message-indexer';
 import { ProgressiveIndexer } from './progressive-indexer';
 import { ScrollManager } from './scroll-manager';
@@ -19,12 +21,14 @@ interface ControllerOptions {
   scanMaxWaitMs?: number;
   routePollMs?: number;
   streamingPollMs?: number;
+  /** Defaults to the adapter for the page's site. */
+  adapter?: SiteAdapter;
 }
 
 /** How many threads keep their index in memory when you switch between them. */
 export const THREAD_CACHE_SIZE = 10;
 
-/** How long a jump to a virtualised message waits for ChatGPT to render it. */
+/** How long a jump to a virtualised message waits for the site to render it. */
 const SEEK_MAX_STEPS = 14;
 const SEEK_STEP_MS = 120;
 
@@ -44,14 +48,14 @@ const emptyDiagnostics = (): Diagnostics => ({
  * observers, timers and DOM references are released.
  */
 export class NavigatorController {
-  readonly adapter: ChatGPTDomAdapter;
+  readonly adapter: SiteAdapter;
   readonly indexer: MessageIndexer;
   private readonly scroll: ScrollManager;
   private readonly tracker: ActiveTracker;
   private readonly progressive: ProgressiveIndexer;
   private readonly doc: Document;
   private readonly win: Window;
-  private readonly opts: Required<Omit<ControllerOptions, 'doc' | 'win'>>;
+  private readonly opts: Required<Omit<ControllerOptions, 'doc' | 'win' | 'adapter'>>;
 
   private channels = new Set<PanelChannel>();
   private started = false;
@@ -69,6 +73,8 @@ export class NavigatorController {
   private positions = new Map<string, number>();
   /** Last known offset (px from the top of the scroll content) of each message. */
   private offsets = new Map<string, number>();
+  /** Message elements whose offset was already recorded. */
+  private measured = new WeakSet<Element>();
   /** Index + offsets of recently visited threads, most recent last (LRU). */
   private threadCache = new Map<string, { state: IndexState; offsets: Map<string, number> }>();
   private seekToken = 0;
@@ -86,7 +92,7 @@ export class NavigatorController {
       routePollMs: options.routePollMs ?? 700,
       streamingPollMs: options.streamingPollMs ?? 1000,
     };
-    this.adapter = new ChatGPTDomAdapter(this.doc);
+    this.adapter = options.adapter ?? createSiteAdapter(this.doc);
     this.indexer = new MessageIndexer(this.adapter.detectConversation());
     this.scroll = new ScrollManager({ win: this.win });
     this.tracker = new ActiveTracker(
@@ -136,6 +142,7 @@ export class NavigatorController {
         break;
       case 'RESCAN':
         this.extractionCache = new WeakMap();
+        this.measured = new WeakSet();
         this.container = null;
         this.scan();
         this.broadcastSnapshot();
@@ -155,6 +162,11 @@ export class NavigatorController {
       case 'CANCEL_INDEX_MORE':
         this.progressive.cancel();
         break;
+      case 'PROBE_DOM': {
+        const probe = { site: this.adapter.site, strategy: this.diagnostics.strategy, mounted: this.diagnostics.mountedCount, ...probeDom(this.doc) };
+        channel.post({ type: 'PROBE_RESULT', probe: JSON.stringify(probe, null, 1) });
+        break;
+      }
     }
   }
 
@@ -356,10 +368,21 @@ export class NavigatorController {
   }
 
   /** Remember where each rendered message sits, to find it again once ChatGPT unmounts it. */
+  /**
+   * Measures each message element once, when it first appears (a re-mounted
+   * message is a new element, so it is measured again). Re-measuring every
+   * message on every scan would force a layout per scan, and a message's
+   * offset doesn't change while content is added below it (streaming).
+   */
   private recordOffsets(scanned: readonly ScannedMessage[], container: HTMLElement | null): void {
-    if (!container || scanned.length === 0) return;
-    const base = container.getBoundingClientRect().top - container.scrollTop;
-    for (const s of scanned) this.offsets.set(s.id, s.element.getBoundingClientRect().top - base);
+    if (!container) return;
+    let base: number | null = null;
+    for (const s of scanned) {
+      if (this.measured.has(s.element)) continue;
+      base ??= container.getBoundingClientRect().top - container.scrollTop;
+      this.offsets.set(s.id, s.element.getBoundingClientRect().top - base);
+      this.measured.add(s.element);
+    }
   }
 
   /** The user navigated from the panel: stop indexing without jumping back. */
@@ -409,7 +432,7 @@ export class NavigatorController {
     const conversation = this.indexer.conversationInfo;
     if (strategy === 'none' && conversation.conversationId !== null) {
       warnings.push(
-        'No messages found on the page. The conversation may still be loading, or ChatGPT changed its page structure. Try Rescan.',
+        'No messages found on the page. The conversation may still be loading, or the site changed its page structure. Try Rescan.',
       );
     }
     if (strategy === 'conversation-turn') {

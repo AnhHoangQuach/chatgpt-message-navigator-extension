@@ -28,6 +28,8 @@ interface Props {
   onCopy(row: ListRow): void;
   /** Message whose jump is still in progress (shows a spinner on its card). */
   pendingId?: string | null;
+  /** The assistant's name on the current site. */
+  assistantName?: string;
 }
 
 /**
@@ -48,6 +50,7 @@ export function MessageList({
   onToggleBookmark,
   onCopy,
   pendingId = null,
+  assistantName = 'ChatGPT',
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -231,6 +234,7 @@ export function MessageList({
             return (
               <MessageItem
                 key={row.key}
+                assistantName={assistantName}
                 row={row}
                 domId={`cmn-row-${index}`}
                 top={index * ROW_HEIGHT}

@@ -13,7 +13,9 @@ export type PanelToContent =
   | { type: 'SCROLL_TO'; messageId: string; requestId: number }
   | { type: 'SCROLL_TO_BOTTOM' }
   | { type: 'INDEX_MORE' }
-  | { type: 'CANCEL_INDEX_MORE' };
+  | { type: 'CANCEL_INDEX_MORE' }
+  /** Ask for a structure-only snapshot of the page (Details → Copy page structure). */
+  | { type: 'PROBE_DOM' };
 
 // ---------------------------------------------------------------------------
 // Content script -> side panel (sent over the port)
@@ -39,7 +41,9 @@ export type ContentToPanel =
       ok: boolean;
       reason?: ScrollFailureReason;
     }
-  | { type: 'INDEX_MORE_STATE'; state: ProgressiveIndexState };
+  | { type: 'INDEX_MORE_STATE'; state: ProgressiveIndexState }
+  /** JSON from content/dom-probe.ts: tags, classes and attribute names only, no message text. */
+  | { type: 'PROBE_RESULT'; probe: string };
 
 // ---------------------------------------------------------------------------
 // Runtime messages (service worker -> side panel)
@@ -64,6 +68,7 @@ export function isPanelToContent(value: unknown): value is PanelToContent {
     case 'SCROLL_TO_BOTTOM':
     case 'INDEX_MORE':
     case 'CANCEL_INDEX_MORE':
+    case 'PROBE_DOM':
       return true;
     case 'SCROLL_TO':
       return (

@@ -1,8 +1,10 @@
 # AI Chat Navigator
 
-> Works on chatgpt.com. Not affiliated with, endorsed by, or sponsored by OpenAI. "ChatGPT" is a trademark of OpenAI.
+> Works on ChatGPT, Gemini, Claude, Grok and DeepSeek. Not affiliated with, endorsed by, or sponsored by OpenAI, Google, Anthropic, xAI or DeepSeek. ChatGPT, Gemini, Claude, Grok and DeepSeek are trademarks of their respective owners.
 
-A Chrome extension (Manifest V3) that adds a searchable, filterable navigation panel for the messages of the ChatGPT conversation open at `chatgpt.com`. It runs in Chrome's **Side Panel**, next to the conversation.
+A Chrome extension (Manifest V3) that adds a searchable, filterable navigation panel for the messages of the AI chat conversation open in the current tab. It runs in Chrome's **Side Panel**, next to the conversation.
+
+- **Sites**: ChatGPT, Gemini, Claude, Grok and DeepSeek. The panel recognises the site automatically when you switch tabs. See [Supported sites](#supported-sites).
 
 - **Message index**: every rendered message, in order, as a card with role, the first sentence and a one-line preview.
 - **Jump to message**: click a message (or press Enter) to scroll ChatGPT to it smoothly. The message is centered, or top-aligned if it is tall, and briefly highlighted.
@@ -67,7 +69,7 @@ Requires the pinned toolchain: Node 26.13 (`nvm use` reads `.nvmrc`) and pnpm 11
 3. **Build the ZIP:**
    ```bash
    pnpm package
-   # [cmn] release/ai-chat-navigator-1.0.1.zip (10 files, 49 KB)
+   # [cmn] release/ai-chat-navigator-1.1.0.zip (10 files, 53 KB)
    ```
    This type-checks, builds `dist/` from scratch, checks the manifest against the store limits, and zips `dist/` with `manifest.json` at the archive root. It stops with an error if `name` is over 75 characters or `description` is over 132, and warns if `short_name` is over 12.
 4. **Inspect the archive** (optional):
@@ -196,6 +198,33 @@ The side panel derives everything else from `text`: the card title and preview, 
 
 ---
 
+## Supported sites
+
+| Site | Host | Markup status |
+| --- | --- | --- |
+| ChatGPT | `chatgpt.com` | Verified with a structure-only probe of the live site (November 2026). |
+| Gemini | `gemini.google.com` | **Unverified**: selectors based on publicly known markup. |
+| Claude | `claude.ai` | **Unverified** |
+| Grok | `grok.com` | **Unverified** |
+| DeepSeek | `chat.deepseek.com` | **Unverified** |
+
+**Access.** All five hosts are `host_permissions` granted at install, and the content script is declared for each of them, so the panel connects as soon as you switch to one of these sites (it stays idle there until a panel connects). On any other tab the panel lists the supported sites with *Open* links. If you restrict the extension's site access in Chrome (*Details → Site access*), Chrome hides those tabs' addresses from the extension; the list then shows **Allow** for each restricted site, which asks Chrome to restore access.
+
+**How other sites are read.** Each site other than ChatGPT is described by a set of CSS selectors in [`src/content/site-selectors.ts`](src/content/site-selectors.ts), read by the generic [`SelectorAdapter`](src/content/selector-adapter.ts):
+
+| Site | Prompt | Reply | Stable ID | Conversation ID |
+| --- | --- | --- | --- | --- |
+| Gemini | `user-query` (`.query-text`) | `model-response` (`message-content`) | `.conversation-container[id]` | `/app/<id>`, `/gem/<gem>/<id>` |
+| Claude | `[data-testid="user-message"]` | `.font-claude-response` | from content (see below) | `/chat/<uuid>` |
+| Grok | `.items-end .message-bubble` | `.items-start .message-bubble` | `[id^="response-"]` | `/c/<id>`, `/chat/<id>` |
+| DeepSeek | `.ds-message` without `.ds-markdown` | `.ds-message` with `.ds-markdown` | `[data-virtual-list-item-key]` | `/a/chat/s/<id>` |
+
+Conversation IDs from these sites are prefixed with the site (`gemini:<id>`…), so favorites never collide across sites. When a site has no message IDs, a prompt's ID is a hash of its text and a reply's ID is derived from the prompt it answers, so IDs stay stable while a reply streams, across re-renders and across reloads.
+
+**If a site isn't detected** (*No messages found*): open **Details → Copy page structure** on that site and send the result. It contains tag names, class names and attribute names only, never message text (there is a test for this). The selectors for that site can then be fixed in `site-selectors.ts`, with the fixtures in `src/tests/fixtures/sites.ts` updated to match.
+
+---
+
 ## ChatGPT DOM assumptions
 
 ChatGPT's markup is **not a public API**. Every selector lives in [`src/content/chatgpt-dom-adapter.ts`](src/content/chatgpt-dom-adapter.ts) (`SELECTORS`), and extraction falls back through several strategies:
@@ -272,7 +301,7 @@ This extension can read private conversations, so it is deliberately minimal:
 
 - **No network access.** No `fetch` or XHR, no analytics, no remote code. The build contains no `eval` / `new Function`, and the extension-page CSP is `script-src 'self'`. Tailwind CSS is compiled at build time into a static stylesheet, and Lucide icons are bundled as inline SVG components, so the panel loads no fonts, styles or icons from the network.
 - **Nothing leaves your browser.**
-  - Conversation text goes only from the ChatGPT tab to this extension's side panel, over a `chrome.runtime` Port.
+  - Conversation text goes only from the chat tab to this extension's side panel, over a `chrome.runtime` Port.
   - The content script accepts Port connections only from this extension.
 - **No cookies, tokens, credentials or ChatGPT APIs.** The extension reads only the rendered DOM of the open conversation. It does not call ChatGPT's internal APIs or intercept requests.
 - **Not stored by default.** The message index is kept in memory only, and is discarded when the panel closes or the page reloads.
@@ -289,7 +318,7 @@ This extension can read private conversations, so it is deliberately minimal:
 | `sidePanel` | Show the navigator in Chrome's side panel. |
 | `storage` | Save bookmarks locally. |
 | `scripting` | Inject the content script into ChatGPT tabs that were already open when the extension was installed or reloaded. Without it, those tabs need a manual reload. |
-| Host `https://chatgpt.com/*` | Run the content script there, and read the active tab's URL to know whether it is a ChatGPT tab. No other sites. |
+| Hosts `https://chatgpt.com/*`, `https://gemini.google.com/*`, `https://claude.ai/*`, `https://grok.com/*`, `https://chat.deepseek.com/*` | Run the content script on these chat sites, and read the active tab's URL to know whether it is one of them. No other sites. |
 
 ---
 
@@ -297,7 +326,7 @@ This extension can read private conversations, so it is deliberately minimal:
 
 ### Unit and integration tests
 
-Run with `pnpm test`: 107 tests in jsdom, using mocked ChatGPT-shaped DOM fixtures.
+Run with `pnpm test`: 134 tests in jsdom, using mocked ChatGPT-shaped DOM fixtures.
 
 | Requirement | Tests |
 | --- | --- |
@@ -366,12 +395,13 @@ Screenshots are saved to `e2e/output/`.
 What was actually run while building this project:
 
 - `pnpm build` (strict type-check plus production build) succeeds. `dist/` contains a valid MV3 extension that Chromium loads without errors.
-- All 103 unit and integration tests pass.
-- The end-to-end script passes 38/38 in **headless Chromium 1248 (Playwright)** against the **mocked** ChatGPT fixture described above.
+- All 134 unit and integration tests pass.
+- The end-to-end script passes 40/40 in **headless Chromium 1248 (Playwright)** against the **mocked** ChatGPT fixture described above.
 
 What was **not** done:
 
 - Testing against the live chatgpt.com: no ChatGPT account or browser session was available. The selectors in the DOM adapter therefore haven't been confirmed against today's markup.
+- Testing on the live Gemini, Claude, Grok or DeepSeek sites: their selectors are unverified and covered only by mock fixtures. The e2e run checks that all five hosts are granted at install with the content script declared on each, and that an unsupported tab lists the sites.
 - Opening the panel through the real Side Panel UI (toolbar click or Alt+Shift+J) under automation. That setup was checked only through `chrome.sidePanel.getPanelBehavior()` and `chrome.commands.getAll()`.
 
 Run the manual checklist above before relying on it.
@@ -383,7 +413,8 @@ Run the manual checklist above before relying on it.
 | Symptom | Fix |
 | --- | --- |
 | "Can't reach this ChatGPT tab" | Reload the ChatGPT tab, then click **Retry**. This happens if Chrome blocks injection, e.g. while the page is still loading. |
-| "No messages found" | Click **Rescan**. If it persists on a conversation that has messages, ChatGPT's markup has likely changed: see [ChatGPT DOM assumptions](#chatgpt-dom-assumptions). |
+| "No supported chat in this tab" on a supported site | The extension's site access is restricted in Chrome: click **Allow** next to the site, or change *Site access* in `chrome://extensions`. Reload tabs that were open before installing. |
+| "No messages found" | Click **Rescan**. If it persists on a conversation that has messages, the site's markup has likely changed: see [ChatGPT DOM assumptions](#chatgpt-dom-assumptions) or, for other sites, use **Details → Copy page structure** ([Supported sites](#supported-sites)). |
 | Shortcut doesn't work | Another extension may be using it. Change it at `chrome://extensions/shortcuts`. |
 | After `pnpm dev` rebuilds, nothing changes | Reload the extension in `chrome://extensions`, then reopen the panel. |
 

@@ -26,7 +26,7 @@ export interface ChatMessage {
   revision: number;
 }
 
-export type ExtractionStrategy = 'author-role' | 'conversation-turn' | 'turn-key' | 'none';
+export type ExtractionStrategy = 'author-role' | 'conversation-turn' | 'turn-key' | 'selectors' | 'none';
 
 export interface Diagnostics {
   strategy: ExtractionStrategy;

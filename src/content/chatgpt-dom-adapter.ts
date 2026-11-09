@@ -1,6 +1,22 @@
-import { normalizeText } from '../shared/search';
 import { hashString } from '../shared/timing';
-import type { ConversationInfo, ExtractionStrategy, MessageRole } from '../shared/types';
+import type { ConversationInfo, MessageRole } from '../shared/types';
+import {
+  BASE_SKIP,
+  classifyRecords,
+  extractPlainText as extractWithSkip,
+  MAX_TEXT_LENGTH,
+  nearestScrollable,
+  observeDom,
+  outermost,
+  scrollEdges,
+  type ChangeSet,
+  type CollectResult,
+  type IdSource,
+  type MessageGroup,
+  type SiteAdapter,
+} from './site-adapter';
+
+export { MAX_TEXT_LENGTH, type ChangeSet };
 
 /**
  * ChatGPT DOM adapter.
@@ -51,8 +67,7 @@ const SELECTORS = {
   userBody: '.whitespace-pre-wrap',
   assistantBody: '.markdown, .prose',
   /** Never read text from these (UI chrome, screen-reader labels, edit boxes). */
-  skip:
-    'button, svg, style, script, noscript, textarea, input, select, template, .sr-only, [aria-hidden="true"], [data-code-block-controls], [data-loading-indicator]',
+  skip: `${BASE_SKIP}, [data-code-block-controls], [data-loading-indicator]`,
   /** The composer and its form; mutations here are ignored. */
   composer: 'form, #prompt-textarea, [data-testid="composer"], [data-chatgpt-composer], [data-composer-input]',
   /** Present while a response is being generated. */
@@ -64,37 +79,6 @@ const SELECTORS = {
   /** Preferred root for observing; falls back to document.body. */
   observeRoot: 'main',
 } as const;
-
-export const MAX_TEXT_LENGTH = 50_000;
-
-const BLOCK_TAGS = new Set([
-  'ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'BR', 'DD', 'DETAILS', 'DIV', 'DL', 'DT', 'FIGCAPTION',
-  'FIGURE', 'FOOTER', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HEADER', 'HR', 'LI', 'MAIN', 'NAV', 'OL',
-  'P', 'PRE', 'SECTION', 'SUMMARY', 'TABLE', 'TBODY', 'TD', 'TFOOT', 'TH', 'THEAD', 'TR', 'UL',
-]);
-
-/** One logical message: one or more consecutive same-role elements in a turn. */
-interface MessageGroup {
-  role: MessageRole;
-  /** First element; used for scrolling, highlighting and intersection tracking. */
-  element: Element;
-  elements: Element[];
-  turnElement: Element | null;
-  turnNumber: number | null;
-  messageId: string | null;
-}
-
-interface CollectResult {
-  strategy: ExtractionStrategy;
-  groups: MessageGroup[];
-}
-
-export interface ChangeSet {
-  /** Message containers were added or removed: list must be re-collected. */
-  structural: boolean;
-  /** Message/turn elements whose content changed. */
-  dirty: Set<Element>;
-}
 
 /** Parse the conversation identity from a ChatGPT URL. */
 export function parseConversation(href: string, title = ''): ConversationInfo {
@@ -129,45 +113,17 @@ export function isActiveTurnState(state: string | null | undefined): boolean {
   return !!state && !SETTLED_TURN_STATE.test(state);
 }
 
-/** Drops elements nested inside another element of the same list. */
-function outermost(elements: Element[]): Element[] {
-  return elements.filter((el) => !elements.some((other) => other !== el && other.contains(el)));
-}
-
 function asRole(value: string | null | undefined): MessageRole | null {
   return value === 'user' || value === 'assistant' ? value : null;
 }
 
-/**
- * Plain-text extraction that inserts spaces at block boundaries (so
- * `<p>a</p><p>b</p>` becomes "a b") and skips UI chrome. Works without layout,
- * unlike innerText, and stops early once `limit` characters are collected.
- */
+/** Plain text of an element using ChatGPT's skip list (UI chrome, code-block controls…). */
 export function extractPlainText(root: Element, limit = MAX_TEXT_LENGTH): string {
-  const parts: string[] = [];
-  let length = 0;
-  const visit = (node: Node): void => {
-    for (let child = node.firstChild; child; child = child.nextSibling) {
-      if (length >= limit) return;
-      if (child.nodeType === Node.TEXT_NODE) {
-        const data = (child as Text).data;
-        parts.push(data);
-        length += data.length;
-      } else if (child.nodeType === Node.ELEMENT_NODE) {
-        const el = child as Element;
-        if (el.matches(SELECTORS.skip)) continue;
-        const block = BLOCK_TAGS.has(el.tagName);
-        if (block) parts.push(' ');
-        visit(el);
-        if (block) parts.push(' ');
-      }
-    }
-  };
-  visit(root);
-  return normalizeText(parts.join('')).slice(0, limit);
+  return extractWithSkip(root, SELECTORS.skip, limit);
 }
 
-export class ChatGPTDomAdapter {
+export class ChatGPTDomAdapter implements SiteAdapter {
+  readonly site = 'chatgpt' as const;
   private derivedIds = new WeakMap<Element, string>();
   private derivedCounter = 0;
 
@@ -286,7 +242,7 @@ export class ChatGPTDomAdapter {
   }
 
   /** Stable ID for a group: ChatGPT message ID > turn test ID > per-element derived ID. */
-  resolveId(group: MessageGroup): { id: string; source: 'message-id' | 'turn' | 'derived' } {
+  resolveId(group: MessageGroup): { id: string; source: IdSource } {
     if (group.messageId) return { id: group.messageId, source: 'message-id' };
     const testId = group.turnElement?.getAttribute('data-testid');
     if (testId) return { id: `turn:${testId}`, source: 'turn' };
@@ -360,25 +316,12 @@ export class ChatGPTDomAdapter {
     const root = this.root();
     const known = root.querySelector<HTMLElement>(SELECTORS.scrollContainer);
     if (known) return known;
-    const start = sample ?? root.querySelector(SELECTORS.anyMessage);
-    const view = this.doc.defaultView;
-    for (let el = start?.parentElement ?? null; el; el = el.parentElement) {
-      if (!view) break;
-      const overflowY = view.getComputedStyle(el).overflowY;
-      if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) return el;
-    }
-    const scrolling = this.doc.scrollingElement as HTMLElement | null;
-    return scrolling && scrolling.scrollHeight > scrolling.clientHeight ? scrolling : null;
+    return nearestScrollable(this.doc, sample ?? root.querySelector(SELECTORS.anyMessage));
   }
 
   /** Scroll position of the message list relative to its ends. */
   getScrollEdges(container: HTMLElement | null): { atTop: boolean; atBottom: boolean } {
-    if (!container) return { atTop: false, atBottom: false };
-    const slack = 40;
-    return {
-      atTop: container.scrollTop <= slack,
-      atBottom: container.scrollHeight - container.scrollTop - container.clientHeight <= slack,
-    };
+    return scrollEdges(container);
   }
 
   /**
@@ -388,50 +331,12 @@ export class ChatGPTDomAdapter {
    * full re-collection. Attribute mutations are not observed at all.
    */
   observeChanges(onChange: (changes: ChangeSet) => void): () => void {
-    const root = this.observeTarget();
-    const observer = new MutationObserver((records) => {
-      const changes = classifyMutations(records);
-      if (changes.structural || changes.dirty.size > 0) onChange(changes);
-    });
-    let observedRoot: Node | null = root;
-    if (root) observer.observe(root, { childList: true, subtree: true, characterData: true });
     // ChatGPT can replace <main>, or switch the active app-shell page when
-    // another thread is opened: follow it.
-    const rootCheck = this.doc.defaultView?.setInterval(() => {
-      const target = this.observeTarget();
-      if (observedRoot && observedRoot.isConnected && observedRoot === target) return;
-      observer.disconnect();
-      observedRoot = target;
-      if (observedRoot) observer.observe(observedRoot, { childList: true, subtree: true, characterData: true });
-      onChange({ structural: true, dirty: new Set() });
-    }, 1000);
-    return () => {
-      observer.disconnect();
-      if (rootCheck !== undefined) this.doc.defaultView?.clearInterval(rootCheck);
-      observedRoot = null;
-    };
+    // another thread is opened: observeDom follows observeTarget().
+    return observeDom(this.doc, () => this.observeTarget(), classifyMutations, onChange);
   }
-}
-
-function containsMessage(node: Node): boolean {
-  if (node.nodeType !== Node.ELEMENT_NODE) return false;
-  const el = node as Element;
-  return el.matches(SELECTORS.anyMessage) || el.querySelector(SELECTORS.anyMessage) !== null;
 }
 
 export function classifyMutations(records: readonly MutationRecord[]): ChangeSet {
-  const dirty = new Set<Element>();
-  let structural = false;
-  for (const record of records) {
-    const target = record.target.nodeType === Node.ELEMENT_NODE ? (record.target as Element) : record.target.parentElement;
-    if (!target) continue;
-    if (target.closest(SELECTORS.composer)) continue;
-    const message = target.closest(SELECTORS.anyMessage);
-    if (record.type === 'childList' && !structural) {
-      for (const n of Array.from(record.addedNodes)) if (containsMessage(n)) structural = true;
-      if (!structural) for (const n of Array.from(record.removedNodes)) if (containsMessage(n)) structural = true;
-    }
-    if (message) dirty.add(message);
-  }
-  return { structural, dirty };
+  return classifyRecords(records, SELECTORS);
 }

@@ -313,6 +313,26 @@ await panel.waitForTimeout(300);
 check('missing bookmarked message shows unavailable state', (await panel.$$('[role=option][data-missing]')).length === 1);
 await panel.screenshot({ path: join(OUT, 'panel-unavailable.png') });
 
+// A tab that isn't a supported chat site: the panel lists the supported sites,
+// all active (every site is granted at install, so they connect automatically).
+const other = await ctx.newPage();
+await other.goto('about:blank');
+const otherTabId = await sw.evaluate(async () => (await chrome.tabs.query({})).find((t) => !t.url?.startsWith('https://chatgpt.com') && !t.url?.startsWith('chrome-extension://'))?.id);
+const sitesPanel = await ctx.newPage();
+await sitesPanel.goto(`chrome-extension://${extId}/src/sidepanel/index.html?tabId=${otherTabId}`);
+await sitesPanel.waitForSelector('[data-testid=unsupported]', { timeout: 10000 }).catch(() => null);
+const siteRows = await sitesPanel.$$eval('[data-site]', (rows) =>
+  rows.map((r) => `${r.getAttribute('data-site')}:${r.textContent?.includes('Active') ? 'active' : (r.querySelector('button.btn')?.textContent?.trim() ?? '?')}`),
+);
+check('unsupported tab lists the 5 supported sites, all active', siteRows.length === 5 && siteRows.every((r) => r.endsWith(':active')), JSON.stringify(siteRows));
+const granted = await sw.evaluate(async () => (await chrome.permissions.getAll()).origins);
+const scriptMatches = await sw.evaluate(() => chrome.runtime.getManifest().content_scripts[0].matches);
+const sites = ['https://chatgpt.com/*', 'https://gemini.google.com/*', 'https://claude.ai/*', 'https://grok.com/*', 'https://chat.deepseek.com/*'];
+check('all 5 sites granted at install, content script declared on each', sites.every((o) => granted.includes(o) && scriptMatches.includes(o)), JSON.stringify({ granted, scriptMatches }));
+await sitesPanel.screenshot({ path: join(OUT, 'panel-sites.png') });
+await sitesPanel.close();
+await other.close();
+
 // Dark mode render
 await page.goto('https://chatgpt.com/c/conv-one-1111');
 await panel.emulateMedia({ colorScheme: 'dark' });
