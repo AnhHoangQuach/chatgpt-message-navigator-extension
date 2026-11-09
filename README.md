@@ -2,20 +2,20 @@
 
 > Works on ChatGPT, Gemini, Claude, Grok and DeepSeek. Not affiliated with, endorsed by, or sponsored by OpenAI, Google, Anthropic, xAI or DeepSeek. ChatGPT, Gemini, Claude, Grok and DeepSeek are trademarks of their respective owners.
 
-A Chrome extension (Manifest V3) that adds a searchable, filterable navigation panel for the messages of the AI chat conversation open in the current tab. It runs in Chrome's **Side Panel**, next to the conversation.
+A Chrome extension (Manifest V3) that adds a searchable, filterable navigation panel for the messages of the AI chat open in the current tab, whichever of the supported platforms you use: **ChatGPT, Gemini, Claude, Grok and DeepSeek**. It runs in Chrome's **Side Panel**, next to the conversation, and picks up the platform automatically when you switch tabs.
 
 - **Sites**: ChatGPT, Gemini, Claude, Grok and DeepSeek. The panel recognises the site automatically when you switch tabs. See [Supported sites](#supported-sites).
 
 - **Message index**: every rendered message, in order, as a card with role, the first sentence and a one-line preview.
-- **Jump to message**: click a message (or press Enter) to scroll ChatGPT to it smoothly. The message is centered, or top-aligned if it is tall, and briefly highlighted.
+- **Jump to message**: click a message (or press Enter) to scroll the chat to it smoothly. The message is centered, or top-aligned if it is tall, and briefly highlighted.
 - **Instant search**: case-insensitive and Unicode-normalized. Vietnamese works accent-insensitively: `tieng viet` finds *tiếng Việt*, while typing diacritics makes the match exact. Matches are highlighted and a result count is shown.
-- **Filters**: All / Mine / ChatGPT / Saved (bookmarks). Filters combine with search.
+- **Filters**: All / Mine / *assistant* (named after the platform: ChatGPT, Gemini, Claude…) / Favorites. Filters combine with search.
 - **Live updates**: new prompts, streaming responses, edits, branch switches and conversation switches are picked up automatically.
-- **Active message tracking**: the message you are reading in ChatGPT is marked in the list, and the list follows it unless you are using the list.
+- **Active message tracking**: the message you are reading in the chat is marked in the list, and the list follows it unless you are using the list.
 - **Bookmarks**: stored locally in `chrome.storage.local`, persist across reloads and restarts, and show an *unavailable* state when the message isn't on the page.
-- **Indexing as you scroll**: ChatGPT only keeps the turns near the viewport in the page. The navigator never scrolls by itself: it indexes what ChatGPT renders, so scrolling up through a thread adds the older messages. **Index more** scrolls through the whole thread on demand, then returns you to where you were; any wheel, key or click stops it.
+- **Indexing as you scroll**: some platforms (ChatGPT notably) only keep the turns near the viewport in the page. The navigator never scrolls by itself: it indexes what the page renders, so scrolling up through a thread adds the older messages. **Index more** scrolls through the whole thread on demand, then returns you to where you were; any wheel, key or click stops it.
 - **Per-thread memory**: the index (and where each message was) of the last 10 threads you visited is kept in memory, so switching threads and coming back doesn't lose what was already indexed.
-- **Jump to any message**, including ones ChatGPT has unmounted: the navigator scrolls to where the message was last seen, waits for ChatGPT to render it, then centers and highlights it.
+- **Jump to any message**, including ones the page has unmounted: the navigator scrolls to where the message was last seen, waits for the page to render it, then centers and highlights it.
 - **Keyboard**: Alt+Shift+J opens the panel. Arrow keys, Enter, Esc, `/` and `B` work inside the panel.
 - **Local only**: no backend, no third-party APIs, no analytics, and no network requests.
 
@@ -47,7 +47,7 @@ Load it in Chrome:
 | Command | What it does |
 | --- | --- |
 | `pnpm install` | Install dependencies. |
-| `pnpm dev` | Rebuild `dist/` on every change (watch mode). After a rebuild, click ↻ on the extension card in `chrome://extensions`, then reload the ChatGPT tab or reopen the panel. |
+| `pnpm dev` | Rebuild `dist/` on every change (watch mode). After a rebuild, click ↻ on the extension card in `chrome://extensions`, then reload the chat tab or reopen the panel. |
 | `pnpm build` | Strict TypeScript check (`tsc --noEmit`) and production build. |
 | `pnpm test` | Unit and integration tests (Vitest + jsdom). |
 | `pnpm test:e2e` | Optional end-to-end run of the built extension in real Chromium (see [Testing](#testing)). |
@@ -69,7 +69,7 @@ Requires the pinned toolchain: Node 26.13 (`nvm use` reads `.nvmrc`) and pnpm 11
 3. **Build the ZIP:**
    ```bash
    pnpm package
-   # [cmn] release/ai-chat-navigator-1.1.0.zip (10 files, 53 KB)
+   # [cmn] release/ai-chat-navigator-1.1.1.zip (10 files, 53 KB)
    ```
    This type-checks, builds `dist/` from scratch, checks the manifest against the store limits, and zips `dist/` with `manifest.json` at the archive root. It stops with an error if `name` is over 75 characters or `description` is over 132, and warns if `short_name` is over 12.
 4. **Inspect the archive** (optional):
@@ -98,13 +98,13 @@ The panel controls:
 | --- | --- | --- |
 | **Index more** | layers icon, header | Scroll through the whole thread once, then return. Shows a spinner while running; click it (or Esc) to stop. |
 | **Rescan** | refresh icon, header | Re-read the page. The icon spins until the fresh index arrives. |
-| **All / Mine / ChatGPT / ☆ Favorites** | filter tabs | Favorites are your bookmarks (star icon). |
+| **All / Mine / *assistant* / ☆ Favorites** | filter tabs | The third tab is named after the platform (ChatGPT, Gemini, Claude, Grok, DeepSeek). Favorites are your bookmarks (star icon). |
 | **⋯** | on each card | *Go to message*, *Copy text* (the message text), add/remove favorite. |
-| **Prev / Next / Bottom / Details** | bottom bar | Step through the list, scroll ChatGPT to the latest message, show indexing diagnostics. |
+| **Prev / Next / Bottom / Details** | bottom bar | Step through the list, scroll the chat to the latest message, show indexing diagnostics. |
 
-Each message is a card: a coloured tile (speech bubble for you, sparkles for ChatGPT), the first sentence in bold, one line of preview (or the text around the search match), the message number `#N`, small state indicators (*writing…* dot, eye-off for *not rendered*, a spinner while a jump to it is in progress), a star and the ⋯ menu.
+Each message is a card: a coloured tile (speech bubble for you, sparkles for the assistant), the first sentence in bold, one line of preview (or the text around the search match), the message number `#N`, small state indicators (*writing…* dot, eye-off for *not rendered*, a spinner while a jump to it is in progress), a star and the ⋯ menu.
 
-**Loading states.** Actions that wait for the ChatGPT tab show progress until they finish: a jump shows a spinner on the card (bringing back a virtualised message can take up to ~1.7 s), *Rescan* spins until the new index arrives, and *Index more* shows a spinner plus a progress notice. Each has a fallback timeout, so nothing spins forever if the tab navigates away.
+**Loading states.** Actions that wait for the chat tab show progress until they finish: a jump shows a spinner on the card (bringing back a virtualised message can take up to ~1.7 s), *Rescan* spins until the new index arrives, and *Index more* shows a spinner plus a progress notice. Each has a fallback timeout, so nothing spins forever if the tab navigates away.
 
 | Where | Key | Action |
 | --- | --- | --- |
@@ -113,27 +113,28 @@ Each message is a card: a coloured tile (speech bubble for you, sparkles for Cha
 | Search field | ↓ | Move into the list. |
 | Search field | Enter | Jump to the selected (or first) result. |
 | List | ↑ / ↓, PgUp / PgDn, Home / End | Move the selection. |
-| List | Enter / Space | Jump to the selected message in ChatGPT. |
+| List | Enter / Space | Jump to the selected message in the chat. |
 | List | B | Bookmark or un-bookmark the selected message. |
 | Panel | Alt+↑ / Alt+↓ | Previous / next message (same as the footer buttons). |
 | Panel | Esc | Stop *Index more*, then dismiss a notice, clear the search, reset the filters, or close details (one per press, in that order). |
 
-Shortcuts are handled only inside the side panel. Nothing is added to the ChatGPT page, so the composer and ChatGPT's own shortcuts keep working as before.
+Shortcuts are handled only inside the side panel. Nothing is added to the chat page, so the composer and the site's own shortcuts keep working as before.
 
 **Prev / Next** step through the currently filtered list. For example, with *Mine* selected they jump between your own prompts. If nothing is selected, they step relative to the message you are reading in ChatGPT.
 
-**The list header** shows the list name, how many cards it has, how many messages are *not rendered* (eye-off count: seen earlier, but ChatGPT no longer shows them on the page), and which message you are reading (*Viewing #N*). Messages are always listed in conversation order, oldest first. **Details** in the bottom bar shows indexing details and diagnostics (a dot marks warnings).
+**The list header** shows the list name, how many cards it has, how many messages are *not rendered* (eye-off count: seen earlier, but the page no longer shows them), and which message you are reading (*Viewing #N*). Messages are always listed in conversation order, oldest first. **Details** in the bottom bar shows indexing details and diagnostics (a dot marks warnings).
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────────────────── chatgpt.com tab ───────────────────────────┐
+┌───── chat tab (chatgpt.com · gemini · claude · grok · deepseek) ───────┐
 │ content.js (isolated world, IIFE)                                       │
 │                                                                         │
 │  NavigatorController ── starts only while a side panel is connected     │
-│   ├─ ChatGPTDomAdapter   all selectors & DOM assumptions (one file)     │
+│   ├─ SiteAdapter         per platform: ChatGPTDomAdapter, or            │
+│   │                      SelectorAdapter + site-selectors.ts            │
 │   ├─ MutationObserver    classified: structural vs. dirty message       │
 │   ├─ MessageIndexer      dedupe, order merge, mounted/unmounted, patches│
 │   ├─ ActiveTracker       IntersectionObserver "reading band"            │
@@ -157,7 +158,7 @@ service-worker.js: opens the panel from the toolbar button and handles Alt+Shift
 
 ### Data flow
 
-1. When the side panel opens, it connects a Port to the active ChatGPT tab. If the tab was open before the extension was installed or reloaded, the panel injects `content.js` once with `chrome.scripting` and retries.
+1. When the side panel opens, it connects a Port to the active chat tab (any supported platform). If the tab was open before the extension was installed or reloaded, the panel injects `content.js` once with `chrome.scripting` and retries.
 2. The controller starts observing, scans, and sends a full `SNAPSHOT`.
 3. DOM mutations are classified cheaply:
    - typing in the composer is ignored;
@@ -177,7 +178,7 @@ interface ChatMessage {
   index: number;              // chronological position in the index
   turnNumber: number | null;  // from data-testid="conversation-turn-N"
   text: string;               // normalized plain text, capped at 50,000 chars
-  mounted: boolean;           // currently attached to ChatGPT's DOM?
+  mounted: boolean;           // currently attached to the page's DOM?
   streaming: boolean;
   revision: number;           // bumps on change; used for memoization
 }
@@ -259,7 +260,7 @@ If ChatGPT changes its markup:
 
 ## Long conversations and the limits of indexing
 
-The navigator can only index what ChatGPT has **rendered in the tab**. It tracks three states:
+The navigator can only index what the chat page has **rendered in the tab**. It tracks three states:
 
 | State | Shown as | Meaning |
 | --- | --- | --- |
@@ -303,11 +304,11 @@ This extension can read private conversations, so it is deliberately minimal:
 - **Nothing leaves your browser.**
   - Conversation text goes only from the chat tab to this extension's side panel, over a `chrome.runtime` Port.
   - The content script accepts Port connections only from this extension.
-- **No cookies, tokens, credentials or ChatGPT APIs.** The extension reads only the rendered DOM of the open conversation. It does not call ChatGPT's internal APIs or intercept requests.
+- **No cookies, tokens, credentials or platform APIs.** The extension reads only the rendered DOM of the open conversation. It does not call any platform's internal APIs or intercept requests.
 - **Not stored by default.** The message index is kept in memory only, and is discarded when the panel closes or the page reloads.
 - **Bookmarks store only metadata:** conversation ID, message ID, role, a ≤160-character preview, and a timestamp. They are kept in `chrome.storage.local`, which is local and not synced.
 - **Safe rendering.** Message text is rendered as Preact text nodes. Matches are wrapped in `<mark>` elements built by Preact, never with `innerHTML` (there is a test for this).
-- **The ChatGPT page is never modified.**
+- **The chat page is never modified.**
   - The highlight is a Web Animations API animation (`element.animate`), so no attributes, classes or content change.
   - The extension never focuses, clicks, or types into the page.
 
@@ -317,7 +318,7 @@ This extension can read private conversations, so it is deliberately minimal:
 | --- | --- |
 | `sidePanel` | Show the navigator in Chrome's side panel. |
 | `storage` | Save bookmarks locally. |
-| `scripting` | Inject the content script into ChatGPT tabs that were already open when the extension was installed or reloaded. Without it, those tabs need a manual reload. |
+| `scripting` | Inject the content script into chat tabs (any supported platform) that were already open when the extension was installed or reloaded. Without it, those tabs need a manual reload. |
 | Hosts `https://chatgpt.com/*`, `https://gemini.google.com/*`, `https://claude.ai/*`, `https://grok.com/*`, `https://chat.deepseek.com/*` | Run the content script on these chat sites, and read the active tab's URL to know whether it is one of them. No other sites. |
 
 ---
@@ -326,7 +327,7 @@ This extension can read private conversations, so it is deliberately minimal:
 
 ### Unit and integration tests
 
-Run with `pnpm test`: 134 tests in jsdom, using mocked ChatGPT-shaped DOM fixtures.
+Run with `pnpm test`: 140 tests in jsdom, using mocked DOM fixtures shaped like each platform.
 
 | Requirement | Tests |
 | --- | --- |
@@ -376,7 +377,7 @@ Screenshots are saved to `e2e/output/`.
 
 1. Load `dist/` unpacked. Check that `chrome://extensions` shows no errors.
 2. Open an existing long conversation. Click the toolbar icon: the panel opens and lists the messages in order, and the counts match.
-3. Press **Alt+Shift+J** from the ChatGPT page: the panel opens or focuses, with the cursor in search.
+3. Press **Alt+Shift+J** from the chat page: the panel opens or focuses, with the cursor in search.
 4. Click messages near the top, middle and bottom. ChatGPT scrolls there, highlights the message briefly, and leaves the composer draft untouched.
 5. Search for a word, then the same word without accents (if it's Vietnamese). Matches are highlighted and the count updates. Esc clears the search.
 6. Try *Mine*, *ChatGPT* and *Favorites*, alone and together with a search.
@@ -386,8 +387,8 @@ Screenshots are saved to `e2e/output/`.
 10. Bookmark two messages. Reload the tab and restart Chrome: they are still under *Saved*. Delete one of the messages in ChatGPT (or open the conversation on another branch): it shows as *unavailable*.
 11. Scroll ChatGPT manually. The active marker (yellow bar) follows, and the list scrolls to it only while your pointer is outside the list.
 12. Open the panel on a long conversation: the page does not move. Scroll up: the count grows. Click a message far away (dimmed, *not rendered*): ChatGPT scrolls there and it is highlighted. Switch to another thread and back: the earlier messages are still listed, and clicking them still scrolls. Click **Index more** and scroll the wheel during the run: it stops immediately.
-13. Switch to a non-ChatGPT tab: the panel shows "Open a ChatGPT conversation". Switch back: it reconnects.
-14. In DevTools, open the Network tab on the ChatGPT page, and the panel's own DevTools (right-click the panel → Inspect). The extension makes no requests.
+13. Switch to a tab that isn't a supported chat: the panel shows "Open a supported AI chat" with the list of platforms. Switch back: it reconnects. Repeat steps 2–7 on Gemini, Claude, Grok and DeepSeek (their selectors are unverified).
+14. In DevTools, open the Network tab on the chat page, and the panel's own DevTools (right-click the panel → Inspect). The extension makes no requests.
 15. Toggle the OS or Chrome dark mode: the panel follows it.
 
 ### Verification status
@@ -395,7 +396,7 @@ Screenshots are saved to `e2e/output/`.
 What was actually run while building this project:
 
 - `pnpm build` (strict type-check plus production build) succeeds. `dist/` contains a valid MV3 extension that Chromium loads without errors.
-- All 134 unit and integration tests pass.
+- All 140 unit and integration tests pass.
 - The end-to-end script passes 40/40 in **headless Chromium 1248 (Playwright)** against the **mocked** ChatGPT fixture described above.
 
 What was **not** done:
@@ -412,7 +413,7 @@ Run the manual checklist above before relying on it.
 
 | Symptom | Fix |
 | --- | --- |
-| "Can't reach this ChatGPT tab" | Reload the ChatGPT tab, then click **Retry**. This happens if Chrome blocks injection, e.g. while the page is still loading. |
+| "Can't reach this tab" | Reload the chat tab, then click **Retry**. This happens if Chrome blocks injection, e.g. while the page is still loading. |
 | "No supported chat in this tab" on a supported site | The extension's site access is restricted in Chrome: click **Allow** next to the site, or change *Site access* in `chrome://extensions`. Reload tabs that were open before installing. |
 | "No messages found" | Click **Rescan**. If it persists on a conversation that has messages, the site's markup has likely changed: see [ChatGPT DOM assumptions](#chatgpt-dom-assumptions) or, for other sites, use **Details → Copy page structure** ([Supported sites](#supported-sites)). |
 | Shortcut doesn't work | Another extension may be using it. Change it at `chrome://extensions/shortcuts`. |

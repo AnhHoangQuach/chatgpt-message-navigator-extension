@@ -1,8 +1,8 @@
 {
   "name": "chatgpt-message-navigator",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
-  "description": "AI Chat Navigator: a Chrome extension with a searchable side-panel navigator for the messages of the conversation open on chatgpt.com.",
+  "description": "AI Chat Navigator: a Chrome extension with a searchable side-panel navigator for the messages of your AI chats on ChatGPT, Gemini, Claude, Grok and DeepSeek.",
   "type": "module",
   "scripts": {
     "dev": "node scripts/build.mjs --watch",
